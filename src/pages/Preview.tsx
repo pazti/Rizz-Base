@@ -8,7 +8,7 @@ export function Dashboard({ theme, toggle, go }: PageProps) {
   return (
     <AppShell page="lobbies" theme={theme} toggle={toggle} go={go}>
       <main className="product-page">
-        <div className="product-heading"><div><span className="kicker">DATABASE / COLLECTIONS</span><h1>LOBBIES<span>.</span></h1><p>Your chaotic little corners of the internet.</p></div><Button tone="pink"><Icon name="plus" /> NEW LOBBY</Button></div>
+        <div className="product-heading"><div><span className="kicker">PREVIEW / SAMPLE DATA</span><h1>LOBBIES<span>.</span></h1><p>Your chaotic little corners of the internet.</p></div><Button tone="pink"><Icon name="plus" /> NEW LOBBY</Button></div>
         <div className="collection-tools"><div className="search">⌕ <span>Search lobbies...</span></div><div><Button tone="plain">FILTERS</Button><Button tone="black">▦ GRID</Button></div></div>
         <div className="lobby-grid">
           {lobbies.map((lobby) => (

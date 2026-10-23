@@ -30,7 +30,7 @@ export default function Landing({ theme, toggle, go }: PageProps) {
   return (
     <>
       <Ticker />
-      <ComingSoonNotice message="The dashboard screens below are a mockup and are not connected to your local files. Use the Go engine or TypeScript SDK for real V1 data." />
+      <ComingSoonNotice message="Preview only: the dashboard below uses sample data and is not connected to local .rizz files. Install the engine first, then use the Go CLI, Node.js SDK, or Python SDK. See Docs → Installation." />
       <Header theme={theme} toggle={toggle} go={go} />
       <main className="landing">
         <section className="hero">
@@ -47,7 +47,7 @@ export default function Landing({ theme, toggle, go }: PageProps) {
             <div className="burst">✦</div>
             <div className="live-sticker">● UI PREVIEW</div>
             <MiniDashboard go={go} />
-    <div className="install">LOCAL V1 <b>GO + TS SDK</b></div>
+    <div className="install">LOCAL V1 <b>GO + NODE + PYTHON</b></div>
           </div>
         </section>
 

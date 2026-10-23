@@ -1,6 +1,7 @@
 # SDKs in other languages
 
-**Node.js and Python** are production-ready. Each SDK owns only its language
+**Node.js and Python** are production-ready. Install the engine separately;
+neither SDK downloads it. Each SDK owns only its language
 API and binary resolution; both use the same engine protocol of one JSON
 request on stdin and one JSON response on stdout. The CLI reference is the
 behavioral specification.
@@ -10,7 +11,7 @@ behavioral specification.
 | Language | Status | Notes |
 | --- | --- | --- |
 | Node.js / TypeScript | Stable (V1) | `npm install rizzbase`, see Node.js SDK page |
-| Python | Stable (V1) | `python/`, mirrors the Node API; no auto-download |
+| Python | Stable (V1) | Install from `python/`; Python 3.10+; no auto-download |
 | Go | Engine-native | Import `rizzbase/engine/core` directly, no CLI hop needed |
 
 The Python package is under [`python/`](../python/README.md). Both SDKs use

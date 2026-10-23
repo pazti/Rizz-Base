@@ -3,6 +3,7 @@ import overview from "../docs/overview.md?raw";
 import installation from "../docs/installation.md?raw";
 import cli from "../docs/cli.md?raw";
 import nodeSdk from "../docs/node-sdk.md?raw";
+import pythonSdk from "../python/README.md?raw";
 import sdks from "../docs/sdks.md?raw";
 import security from "../docs/security.md?raw";
 
@@ -28,7 +29,7 @@ export const docs: DocEntry[] = [
     slug: "installation",
     title: "Install the binary",
     kicker: "MANUAL SETUP",
-    blurb: "Download per OS, verify, add to PATH.",
+    blurb: "Installers, verified binaries, and SDK engine discovery.",
     badge: "LINUX · MAC · WIN",
     markdown: installation,
   },
@@ -49,11 +50,19 @@ export const docs: DocEntry[] = [
     markdown: nodeSdk,
   },
   {
+    slug: "python-sdk",
+    title: "Python SDK",
+    kicker: "STABLE V1",
+    blurb: "Install Python, set up the engine, and run a quickstart.",
+    badge: "PYTHON",
+    markdown: pythonSdk,
+  },
+  {
     slug: "sdks",
     title: "SDKs in other languages",
     kicker: "PYTHON + BEYOND",
-    blurb: "Python plan and roll-your-own guide.",
-    badge: "COMING SOON",
+    blurb: "Supported SDKs and the shared engine protocol.",
+    badge: "NODE · PYTHON",
     markdown: sdks,
   },
   {

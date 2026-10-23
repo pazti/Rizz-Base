@@ -55,7 +55,7 @@ export function Ticker() {
 export function ComingSoonNotice({ message }: { message: string }) {
   return (
     <aside className="coming-soon-notice" role="status">
-      <span>COMING SOON</span>
+      <span>PREVIEW ONLY</span>
       <p>{message}</p>
     </aside>
   );
