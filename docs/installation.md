@@ -51,7 +51,7 @@ The installers default to release `1.1.0` and `~/.rizzbase/bin`. Set
 to choose another version or destination. Set
 `RIZZBASE_RELEASE_BASE_URL` only when using a compatible release mirror.
 
-The Node SDK supports engine versions `>=1.1.0 <2.0.0` and project format `1`.
+Both SDKs support engine versions `>=1.1.0 <2.0.0` and project format `1`.
 Engine and SDK release versions do not need to match. `rizzbase --version`
 prints machine-readable JSON containing both values.
 
@@ -95,7 +95,8 @@ manifest line that names a different local filename.
 
 Checksums detect corruption but do not prove who published a binary. For a
 stronger supply-chain policy, build the engine from source, inspect it, and
-set the SDK's `binaryPath` to that executable. A source build reports `dev`;
+set the SDK's `binaryPath` (Node.js) or `binary_path` (Python) to that
+executable. A source build reports `dev`;
 pass a stable semver at build time to use it with the Node SDK:
 
 ```sh
@@ -105,11 +106,11 @@ go build -ldflags="-X main.version=1.1.0" -o ~/.rizzbase/bin/rizzbase ./cmd/rizz
 
 ## SDK binary selection
 
-The SDK resolves its executable in this order:
+Both SDKs resolve the engine in this order:
 
-1. `binaryPath` in the SDK constructor.
+1. `binaryPath` (Node.js) or `binary_path` (Python) in the SDK constructor.
 2. `RIZZBASE_BINARY`.
 3. `rizzbase` (or `rizzbase.exe` on Windows) on `PATH`.
 
 If no executable is found, the SDK reports `BINARY_UNAVAILABLE` with the
-locations it searched. It never downloads a binary.
+locations it searched. Neither SDK downloads a binary.

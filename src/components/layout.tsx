@@ -47,7 +47,7 @@ export function AppShell({ children, page, theme, toggle, go }: { children: Reac
       <Sidebar active="data" go={go} />
       <div className="app-area">
         <header className="app-topbar"><div><button onClick={() => go("dashboard")}>PREVIEW</button><span>/</span><b>{page}</b></div><div><span className="sync">SAMPLE DATA</span><ThemeToggle theme={theme} toggle={toggle} /></div></header>
-        <ComingSoonNotice message="This dashboard is a mockup using sample data; it is not connected to your .rizz files. Use the Go CLI or TypeScript SDK to work with real V1 data." />
+        <ComingSoonNotice message="Preview only: sample data, not connected to local .rizz files. For real data, install the engine first, then use the Go CLI, Node.js SDK, or Python SDK. See Docs → Installation." />
         {children}
       </div>
     </div>

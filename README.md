@@ -16,34 +16,85 @@ network database, account, or realtime connection.
 - **Small, transparent scope.** Rizzbase is a local file library, not a
   realtime cloud platform. Queries scan a Lobby in memory; there are no indexes.
 
-V1 includes the Go engine and CLI, the TypeScript/Node.js SDK, Project/Lobby/Yap
-operations, in-memory filters and ordering, and JSON export/restore. The React
-product UI is a preview and is not connected to local database files.
+V1 includes the Go engine and CLI, TypeScript/Node.js and Python SDKs,
+Project/Lobby/Yap operations, in-memory filters and ordering, and JSON
+export/restore. The React product UI is a preview and is not connected to
+local database files.
 
 ## Install
+
+> **Important: the SDKs never download the engine.** Install the engine
+> separately first, then install the language SDK you want to use.
+
+### 1. Install the engine
+
+On Linux or macOS, download and inspect the
+[installer script](https://github.com/pazti/Rizz-Base/blob/main/install.sh),
+then run it:
+
+```sh
+curl -fLO https://raw.githubusercontent.com/pazti/Rizz-Base/main/install.sh
+less install.sh
+chmod +x install.sh
+./install.sh
+```
+
+On Windows, inspect the [PowerShell installer](https://github.com/pazti/Rizz-Base/blob/main/install.ps1)
+before running it:
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/pazti/Rizz-Base/main/install.ps1" -OutFile ".\install.ps1"
+Get-Content .\install.ps1
+.\install.ps1
+```
+
+The installers verify release-binary checksums and install the engine under
+`~/.rizzbase/bin` (Windows: `%USERPROFILE%\.rizzbase\bin`). Add that directory
+to `PATH` as prompted. Alternatively, download a release binary and verify it
+using the instructions in [Engine installation](docs/installation.md), or
+[build the engine from source](docs/installation.md#manual-installation).
+
+### 2. Install an SDK
+
+For Node.js:
 
 ```sh
 npm install rizzbase
 ```
 
-Requires Node.js 20 or newer and a separately installed Rizzbase engine. Set
-`RIZZBASE_BINARY` to its path or put `rizzbase` on `PATH`; the SDK never
-downloads or executes a binary from the network. Before its first request, it
-checks the engine version and project format for compatibility.
+The Node SDK requires Node.js 20 or newer and the separately installed engine.
+Python is optional; its SDK requires Python 3.10 or newer. Each SDK checks
+engine and project-format compatibility before its first request.
 
-The `rizzbase@1.1.0` package is published on npm, and the matching `v1.1.0`
-GitHub release contains the engine binaries and SHA-256 manifest:
+For Python, install Python 3.10 or newer, then install the SDK from a checkout:
 
-- [rizzbase 1.1.0 on npm](https://www.npmjs.com/package/rizzbase/v/1.1.0)
-- [v1.1.0 GitHub release](https://github.com/pazti/Rizz-Base/releases/tag/v1.1.0)
+```sh
+python -m pip install ./python
+```
 
-The published SDK includes query ordering and JSON backup/restore. Install it
-with `npm install rizzbase`.
+See [engine installation](docs/installation.md) for version pinning, manual
+binary downloads, and platform details. Binary selection is configurable in
+each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, then both check
+`RIZZBASE_BINARY` and `PATH`.
+
+### Supported languages
+
+- **Node.js / TypeScript** — Node.js 20+, install with `npm install rizzbase`.
+- **Python** — Python 3.10+, install with `python -m pip install ./python`.
+
+The SDKs never download the engine automatically; provide it using the
+constructor option, `RIZZBASE_BINARY`, or `PATH`. See the [Node.js guide](docs/node-sdk.md),
+[Python SDK guide](python/README.md), [installers and conformance details](docs/installation.md),
+[conformance fixtures](conformance/README.md), and [runnable examples](examples/README.md).
+
+> **What's new since 1.1.0:** checksum-verifying engine installers, a Python
+> SDK, and safer engine discovery and compatibility checks. The SDKs still
+> require an engine you install or build yourself.
 
 ## 60-second quick start
 
-Requires Node.js 20+ and a supported macOS, Linux, or Windows x64/arm64
-machine. Install the published SDK:
+Requires Node.js 20+, the separately installed engine, and a supported macOS,
+Linux, or Windows x64/arm64 machine. Install the SDK:
 
 ```sh
 npm install rizzbase
@@ -110,8 +161,8 @@ The React preview is a Vite static site. Import this repository into Vercel
 with the repository root as the project root; Vercel detects Vite
 automatically. Use `npm run build` as the build command and `dist` as the output
 directory if setting these manually. The app uses hash-based navigation, so it
-does not require server rewrites. The deployed UI remains a mock preview and
-does not connect to local `.rizz` files or provide hosted database features.
+does not require server rewrites. The deployed UI remains a preview using sample data. It is not connected to
+local `.rizz` files and does not provide hosted database features.
 
 ## Reopen an existing Project
 
