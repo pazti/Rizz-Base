@@ -17,7 +17,7 @@ cd sdk
 npm install
 npm run build
 cd ../engine
-go build -o /tmp/rizzbase-engine ./cmd/rizzbase
+go build -ldflags="-X main.version=1.1.0" -o /tmp/rizzbase-engine ./cmd/rizzbase
 cd ..
 ```
 
@@ -30,7 +30,7 @@ terminal output or command history (Bash/Zsh):
 read -rsp "Project passphrase: " RIZZBASE_PASSPHRASE
 printf '\n'
 export RIZZBASE_PASSPHRASE
-export RIZZBASE_ENGINE_PATH=/tmp/rizzbase-engine
+export RIZZBASE_BINARY=/tmp/rizzbase-engine
 node examples/notes.mjs
 # or
 node examples/todos.mjs

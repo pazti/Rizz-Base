@@ -11,6 +11,9 @@ build/
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
+*.egg-info/
 *-debug.log*
 logs/
 *.log

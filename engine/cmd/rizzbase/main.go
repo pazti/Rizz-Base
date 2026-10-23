@@ -1,4 +1,4 @@
-// The initial CLI accepts one JSON request on stdin and prints one JSON response.
+// The CLI accepts one JSON request on stdin and prints one JSON response.
 // Passphrases are never accepted as command-line arguments or logged.
 package main
 
@@ -13,6 +13,10 @@ import (
 	rizzcrypto "rizzbase/engine/crypto"
 	"rizzbase/engine/storage"
 )
+
+var version = "dev"
+
+const projectFormatVersion = 1
 
 type request struct {
 	Operation  string            `json:"operation"`
@@ -115,14 +119,34 @@ func run(input io.Reader, output io.Writer) error {
 }
 
 func main() {
-	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: rizzbase < request.json (one engine request via stdin)")
-		os.Exit(2)
+	os.Exit(runCommand(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+}
+
+func runCommand(args []string, input io.Reader, output, errorOutput io.Writer) int {
+	if len(args) == 1 && args[0] == "--version" {
+		if err := json.NewEncoder(output).Encode(struct {
+			Version              string `json:"version"`
+			ProjectFormatVersion int    `json:"projectFormatVersion"`
+		}{Version: version, ProjectFormatVersion: projectFormatVersion}); err != nil {
+			fmt.Fprintln(errorOutput, "Could not write version output.")
+			return 1
+		}
+		return 0
 	}
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		_ = json.NewEncoder(os.Stdout).Encode(response{OK: false, Error: err.Error(), ErrorCode: errorCode(err)})
-		os.Exit(1)
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprintln(output, "Usage: rizzbase < request.json")
+		fmt.Fprintln(output, "       rizzbase --version")
+		return 0
 	}
+	if len(args) != 0 {
+		fmt.Fprintln(errorOutput, "Usage: rizzbase < request.json (or rizzbase --version)")
+		return 2
+	}
+	if err := run(input, output); err != nil {
+		_ = json.NewEncoder(output).Encode(response{OK: false, Error: err.Error(), ErrorCode: errorCode(err)})
+		return 1
+	}
+	return 0
 }
 
 func errorCode(err error) string {

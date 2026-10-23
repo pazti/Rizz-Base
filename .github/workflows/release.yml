@@ -39,19 +39,19 @@ jobs:
         with:
           go-version: "1.24.x"
           cache-dependency-path: engine/go.mod
-      - name: Check tag matches the npm SDK version
-        run: |
-          SDK_VERSION="$(node -p "require('./sdk/package.json').version")"
-          ENGINE_VERSION="$(sed -n 's/.*ENGINE_VERSION = "\([^"]*\)".*/\1/p' sdk/src/binary.ts)"
-          test "$GITHUB_REF_NAME" = "v$SDK_VERSION"
-          test "$SDK_VERSION" = "$ENGINE_VERSION"
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          ENGINE_VERSION: ${{ github.ref_name }}
         run: |
           mkdir -p ../generated-artifacts
-          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+          ENGINE_VERSION="${ENGINE_VERSION#v}"
+          if [[ ! "$ENGINE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tag must contain a stable semver engine version." >&2
+            exit 1
+          fi
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${ENGINE_VERSION}" \
             -o "../generated-artifacts/rizzbase-${GOOS}-${GOARCH}${{ matrix.suffix }}" ./cmd/rizzbase
         working-directory: engine
       - uses: actions/upload-artifact@v4

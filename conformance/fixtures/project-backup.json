@@ -1,0 +1,60 @@
+{
+  "name": "project-backup",
+  "setupFiles": {
+    "$badBackup": "{not-json"
+  },
+  "setupDirectories": {
+    "$readOnlyDirectory": { "path": "read-only", "mode": 320 }
+  },
+  "steps": [
+    { "id": "create", "operation": "create", "args": { "name": "Backup fixture" } },
+    { "id": "lobby", "operation": "lobby.create", "args": { "name": "backup-lobby" }, "capture": { "lobby": "lobby.id" } },
+    {
+      "id": "yap",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "saved", "data": { "message": "round trip" } }
+    },
+    {
+      "id": "export",
+      "operation": "project.export",
+      "args": { "backupPath": "$exportedBackup" }
+    },
+    {
+      "id": "export-missing-directory",
+      "operation": "project.export",
+      "args": { "backupPath": "${missingExportDirectory}/backup.json" },
+      "expect": { "errorCode": "FILE_NOT_FOUND" }
+    },
+    {
+      "id": "export-invalid-parent",
+      "operation": "sdk.export",
+      "args": { "backupPath": "${project}/child.json" },
+      "expect": { "errorCode": "EXPORT_FAILED" }
+    },
+    {
+      "id": "export-permission-denied",
+      "operation": "sdk.export",
+      "args": { "backupPath": "${readOnlyDirectory}/backup.json" },
+      "expect": { "errorCode": "PERMISSION_DENIED" },
+      "skipIfRoot": true
+    },
+    {
+      "id": "import",
+      "operation": "project.import",
+      "args": { "path": "$restoredProject", "backupPath": "$exportedBackup" },
+      "expect": { "fields": { "project.name": "Backup fixture", "project.version": 1 } }
+    },
+    {
+      "id": "import-no-overwrite",
+      "operation": "project.import",
+      "args": { "path": "$restoredProject", "backupPath": "$exportedBackup" },
+      "expect": { "errorCode": "FILE_EXISTS" }
+    },
+    {
+      "id": "invalid-backup",
+      "operation": "project.import",
+      "args": { "path": "$invalidProject", "backupPath": "$badBackup" },
+      "expect": { "errorCode": "INVALID_BACKUP" }
+    }
+  ]
+}

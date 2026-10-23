@@ -26,10 +26,10 @@ product UI is a preview and is not connected to local database files.
 npm install rizzbase
 ```
 
-Requires Node.js 20 or newer. The first SDK operation downloads the matching
-engine binary for macOS, Linux or Windows on x64 or arm64. Later calls use the
-verified local cache. Downloads come from versioned GitHub releases and are
-checked against the release's SHA-256 manifest.
+Requires Node.js 20 or newer and a separately installed Rizzbase engine. Set
+`RIZZBASE_BINARY` to its path or put `rizzbase` on `PATH`; the SDK never
+downloads or executes a binary from the network. Before its first request, it
+checks the engine version and project format for compatibility.
 
 The `rizzbase@1.1.0` package is published on npm, and the matching `v1.1.0`
 GitHub release contains the engine binaries and SHA-256 manifest:
@@ -180,10 +180,9 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
 - Projects use AES-256-GCM with PBKDF2-HMAC-SHA256 at 600,000 iterations.
   Wrong passphrases and damaged ciphertext fail authentication. There is no
   passphrase recovery or key rotation.
-- The SDK downloads a platform binary over HTTPS and validates its SHA-256
-  against a versioned release manifest. Set `binaryPath` to use a build you
-  obtained and trust yourself. Checksums detect corruption; they are not a
-  signed provenance system.
+- The SDK only runs an engine you provide through `binaryPath`,
+  `RIZZBASE_BINARY`, or `PATH`, in that order. It checks the engine's reported
+  version and project format before using it.
 - Keep secure backups of `.rizz` files. JSON export is also available, but it
   contains decrypted data and must be protected accordingly. A local file lock
   blocks a second writer; after a crash, check that no process is still writing

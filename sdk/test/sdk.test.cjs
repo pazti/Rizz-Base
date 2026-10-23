@@ -5,7 +5,6 @@ const { join } = require("node:path");
 const { after, before, test } = require("node:test");
 const assert = require("node:assert/strict");
 const { Rizzbase, RizzbaseError } = require("../dist/index.js");
-const { binaryAsset } = require("../dist/binary.js");
 const { pathToFileURL } = require("node:url");
 
 let directory;
@@ -13,7 +12,7 @@ let binary;
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), "rizzbase-sdk-"));
   binary = join(directory, "rizzbase");
-  execFileSync("go", ["build", "-o", binary, "./cmd/rizzbase"], { cwd: join(__dirname, "../../engine") });
+  execFileSync("go", ["build", "-ldflags=-X main.version=1.1.0", "-o", binary, "./cmd/rizzbase"], { cwd: join(__dirname, "../../engine") });
 });
 after(async () => rm(directory, { recursive: true, force: true }));
 
@@ -83,18 +82,6 @@ test("SDK reports typed engine and input errors without exposing passphrase", as
   const circular = {}; circular.self = circular;
   await assert.rejects(db.createYap("lobby", "circular", circular), e => e.code === "INVALID_ARGUMENT");
   assert.equal((await (await import("node:fs/promises")).readFile(path, "utf8")).includes("never-echo-this"), false);
-});
-
-test("platform names map to all six supported builds", () => {
-  for (const [platform, arch, expected] of [
-    ["darwin", "arm64", "rizzbase-darwin-arm64"],
-    ["darwin", "x64", "rizzbase-darwin-amd64"],
-    ["linux", "arm64", "rizzbase-linux-arm64"],
-    ["linux", "x64", "rizzbase-linux-amd64"],
-    ["win32", "arm64", "rizzbase-windows-arm64.exe"],
-    ["win32", "x64", "rizzbase-windows-amd64.exe"],
-  ]) assert.equal(binaryAsset(platform, arch), expected);
-  assert.throws(() => binaryAsset("freebsd", "x64"), e => e.code === "UNSUPPORTED_PLATFORM");
 });
 
 test("package supports named ES module imports", async () => {

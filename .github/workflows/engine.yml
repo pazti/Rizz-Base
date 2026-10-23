@@ -8,6 +8,17 @@ permissions:
   contents: read
 
 jobs:
+  installer-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Parse and integration-test PowerShell installer
+        shell: pwsh
+        run: ./scripts/test-installers.ps1
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -32,6 +43,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
       - run: npm install --ignore-scripts
         working-directory: sdk
       - run: npm run build
@@ -40,3 +54,33 @@ jobs:
         working-directory: sdk
       - run: npm exec -- tsc --noEmit --strict --target ES2022 --module Node16 --moduleResolution Node16 --types node test/typecheck.ts
         working-directory: sdk
+      - run: python -m pip install ./python
+      - run: python -m unittest discover -s python/tests
+      - name: Build conformance engine
+        run: go build -ldflags="-X main.version=1.1.0" -o "$RUNNER_TEMP/rizzbase" ./cmd/rizzbase
+        working-directory: engine
+      - name: Build incompatible conformance engine
+        run: go build -ldflags="-X main.version=2.0.0" -o "$RUNNER_TEMP/rizzbase-incompatible" ./cmd/rizzbase
+        working-directory: engine
+      - name: Build protocol-error conformance engine
+        run: go build -o "$RUNNER_TEMP/rizzbase-protocol-error" ./cmd/conformance-test-engine
+        working-directory: engine
+      - name: Build nonzero-exit conformance engine
+        run: go build -ldflags="-X main.mode=nonzero" -o "$RUNNER_TEMP/rizzbase-nonzero" ./cmd/conformance-test-engine
+        working-directory: engine
+      - name: Set conformance engine path
+        run: |
+          echo "RIZZBASE_BINARY=$RUNNER_TEMP/rizzbase" >> "$GITHUB_ENV"
+          echo "RIZZBASE_INCOMPATIBLE_BINARY=$RUNNER_TEMP/rizzbase-incompatible" >> "$GITHUB_ENV"
+          echo "RIZZBASE_PROTOCOL_ERROR_BINARY=$RUNNER_TEMP/rizzbase-protocol-error" >> "$GITHUB_ENV"
+          echo "RIZZBASE_NONZERO_BINARY=$RUNNER_TEMP/rizzbase-nonzero" >> "$GITHUB_ENV"
+      - name: Run Node conformance fixtures
+        run: node conformance/node-runner.cjs > "$RUNNER_TEMP/node-conformance.json"
+      - name: Run Python SDK conformance fixtures
+        run: python3 conformance/python-runner.py > "$RUNNER_TEMP/python-conformance.json"
+      - name: Compare normalized conformance results
+        run: diff -u "$RUNNER_TEMP/node-conformance.json" "$RUNNER_TEMP/python-conformance.json"
+      - name: Test shell installer
+        run: |
+          bash -n install.sh
+          python3 scripts/test-installers.py

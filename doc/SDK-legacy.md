@@ -4,25 +4,19 @@ The SDK is a local Node.js wrapper around Rizzbase's Go engine. It never starts
 a network database. It invokes the engine once per operation and stores data
 in the `.rizz` file at the path you provide.
 
-The current repository source targets SDK `1.1.0`. Until the matching package
-and engine release are published, `npm install rizzbase` installs `1.0.0`,
-which does not yet include `orderBy`, JSON export, or restore. The local source
-build and examples below exercise the `1.1.0` API.
+This older guide is retained for reference. For the current API, engine
+installation, binary resolution and compatibility policy, see the
+[current Node SDK guide](../docs/node-sdk.md).
 
 ## Requirements and installation
 
 - Node.js 20 or newer.
-- A supported platform: Linux, macOS or Windows, x64 or arm64.
-- For the published package, `npm install rizzbase`.
+- An installed Rizzbase engine executable.
+- The Node package: `npm install rizzbase`.
 
-The first database operation downloads a version-specific engine executable
-from the matching GitHub release. The downloader requires HTTPS, checks the
-engine against that release's SHA-256 manifest, and stores the executable in
-`~/.cache/rizzbase` (or the directory supplied as `cacheDir`). It rechecks the
-cached executable before reuse. Network access is needed for the first
-download; subsequent runs can work offline if the verified cache remains.
-Unsupported platforms can use a trusted, locally built binary through
-`binaryPath`.
+The SDK never downloads or caches an engine. It resolves the executable in
+this order: `binaryPath`, `RIZZBASE_BINARY`, then `rizzbase` on `PATH`. It
+checks engine and project-format compatibility before its first operation.
 
 ## Quick start
 
@@ -59,15 +53,12 @@ For complete runnable Notes and Todo examples, see the repository
 
 ```ts
 new Rizzbase("./data.rizz", passphrase, {
-  binaryPath: "/trusted/path/to/rizzbase", // optional; bypasses download
-  cacheDir: "/private/user/cache",         // optional; default ~/.cache/rizzbase
+  binaryPath: "/trusted/path/to/rizzbase", // optional; highest resolution priority
   timeoutMs: 30_000,                       // optional; per engine call
 });
 ```
 
-`binaryDownloadBaseUrl` can point at an HTTPS release mirror following the
-`v{version}/SHA256SUMS` and `v{version}/{asset}` layout. It cannot use HTTP or
-URLs with embedded credentials, queries or fragments.
+The SDK supports engine versions `>=1.1.0 <2.0.0` and project format `1`.
 
 ## API reference
 
@@ -101,9 +92,9 @@ try {
 
 Errors reject as `RizzbaseError` with a stable code, for example
 `INVALID_ARGUMENT` for invalid paths or query options, `LOBBY_NOT_FOUND` and
-`YAP_NOT_FOUND` for missing records, or `BINARY_DOWNLOAD_FAILED` when the
-version-matched engine release cannot be downloaded. Error messages do not
-include the passphrase.
+`YAP_NOT_FOUND` for missing records, `BINARY_UNAVAILABLE` when no executable
+can be resolved, or `ENGINE_INCOMPATIBLE` when the engine version or project
+format is unsupported. Error messages do not include the passphrase.
 
 ### Lobby
 

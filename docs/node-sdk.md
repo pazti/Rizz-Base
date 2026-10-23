@@ -1,8 +1,8 @@
 # Node.js SDK
 
-The only production SDK today. It wraps the engine binary: each method ensures a binary, spawns one engine process with your request on stdin, and resolves with the decoded result.
+The Node.js SDK wraps the engine binary: each method resolves a user-provided binary, spawns one engine process with your request on stdin, and resolves with the decoded result. A Python SDK is also available; see the [SDK overview](./sdks.md).
 
-Requires **Node.js 20+** and a supported platform (Linux, macOS, Windows on x64/arm64). Unsupported platforms must supply `binaryPath`. This guide targets SDK `1.1.0` (`orderBy`, JSON export and restore included).
+Requires **Node.js 20+** and an installed Rizzbase engine. The SDK supports engine versions `>=1.1.0 <2.0.0` and project format `1`. Engine, SDK, and project-format versions are independent.
 
 ## Install
 
@@ -10,7 +10,7 @@ Requires **Node.js 20+** and a supported platform (Linux, macOS, Windows on x64/
 npm install rizzbase
 ```
 
-Today's published package downloads the matching engine on first use into `~/.cache/rizzbase` and verifies SHA-256 against the release manifest. Part 2 changes this: you install the binary yourself (see Install page) and the SDK uses `PATH` / `binaryPath` without downloading.
+Install the engine yourself (see the [Install page](./installation.md)). The SDK never downloads, caches, or executes a remote binary. It checks a resolved engine's version and project format once per binary path before its first request.
 
 ## Quickstart
 
@@ -47,10 +47,10 @@ new Rizzbase(path, passphrase, options?)
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `binaryPath` | engine on `PATH` / cache | Trusted executable; bypasses download |
-| `cacheDir` | `~/.cache/rizzbase` | Where downloaded engines are cached |
-| `binaryDownloadBaseUrl` | GitHub releases | HTTPS mirror with `v{version}/SHA256SUMS` layout |
+| `binaryPath` | unset | Explicit trusted executable; takes precedence |
 | `timeoutMs` | `30000` | Per-engine-call timeout |
+
+Binary resolution order is `binaryPath` → `RIZZBASE_BINARY` → `rizzbase` on `PATH`. If no executable is found, the SDK reports `BINARY_UNAVAILABLE` with searched locations and installation guidance. An incompatible or unverifiable engine reports `ENGINE_INCOMPATIBLE`.
 
 Relative paths resolve from `process.cwd()`. Operations on one instance are serialized in call order; a failed write does not poison the queue.
 
@@ -133,7 +133,7 @@ await db.query("LOBBY-ID")
 
 ### Error codes
 
-`INVALID_ARGUMENT`, `UNSUPPORTED_PLATFORM`, `BINARY_DOWNLOAD_FAILED`, `BINARY_CHECKSUM_FAILED`, `BINARY_UNAVAILABLE`, `ENGINE_TIMEOUT`, `ENGINE_PROTOCOL_ERROR`, `ENGINE_ERROR`, plus engine codes `AUTHENTICATION_FAILED`, `INVALID_FORMAT`, `PROJECT_BUSY`, `LOBBY_NOT_FOUND`, `YAP_NOT_FOUND`, `YAP_EXISTS`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `PERMISSION_DENIED`, `INVALID_BACKUP`, and SDK-side `EXPORT_FAILED`.
+`INVALID_ARGUMENT`, `BINARY_UNAVAILABLE`, `ENGINE_INCOMPATIBLE`, `ENGINE_TIMEOUT`, `ENGINE_PROTOCOL_ERROR`, `ENGINE_ERROR`, plus engine codes `AUTHENTICATION_FAILED`, `INVALID_FORMAT`, `PROJECT_BUSY`, `LOBBY_NOT_FOUND`, `YAP_NOT_FOUND`, `YAP_EXISTS`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `PERMISSION_DENIED`, `INVALID_BACKUP`, and SDK-side `EXPORT_FAILED`.
 
 ## Typing
 

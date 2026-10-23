@@ -1,0 +1,32 @@
+{
+  "name": "project-import",
+  "setupFiles": {
+    "$validBackup": {
+      "version": 1,
+      "name": "Imported conformance project",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lobbies": {}
+    },
+    "$badBackup": "{not-json"
+  },
+  "steps": [
+    {
+      "id": "import-valid",
+      "operation": "project.import",
+      "args": { "backupPath": "$validBackup" },
+      "expect": { "fields": { "project.name": "Imported conformance project" } }
+    },
+    {
+      "id": "import-overwrite",
+      "operation": "project.import",
+      "args": { "backupPath": "$validBackup" },
+      "expect": { "errorCode": "FILE_EXISTS" }
+    },
+    {
+      "id": "import-invalid",
+      "operation": "project.import",
+      "args": { "path": "$invalidProject", "backupPath": "$badBackup" },
+      "expect": { "errorCode": "INVALID_BACKUP" }
+    }
+  ]
+}

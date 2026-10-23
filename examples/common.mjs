@@ -22,7 +22,7 @@ export async function openExampleProject(fileName, projectName, lobbyName) {
 
   const path = join(directory, fileName);
   const db = new Rizzbase(path, passphrase, {
-    ...(process.env.RIZZBASE_ENGINE_PATH ? { binaryPath: process.env.RIZZBASE_ENGINE_PATH } : {}),
+    ...(process.env.RIZZBASE_BINARY ? { binaryPath: process.env.RIZZBASE_BINARY } : {}),
   });
   try {
     await access(path);

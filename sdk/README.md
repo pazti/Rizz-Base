@@ -25,8 +25,9 @@ const restored = new Rizzbase("./restored.rizz", getPassphrasePrivately());
 await restored.importBackup("./backup.json");
 ```
 
-The first operation downloads and checksum-verifies the version-matched Go
-engine for the current OS and CPU. A new Project is created with
+Install the Go engine separately, then provide it using the `binaryPath`
+option, `RIZZBASE_BINARY`, or `PATH` (in that order). The SDK never downloads
+an engine. It checks the engine version and project format before use. A new Project is created with
 `await db.create("Project name")`; `open()` opens an existing Project.
 
 For the full API reference, query semantics, decrypted-backup safety, security

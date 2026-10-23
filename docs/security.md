@@ -28,7 +28,7 @@ Rizzbase protects a file on your device. It does not protect you from yourself â
 ## Supply chain
 
 - Manual installs verify SHA-256 against the release `SHA256SUMS`. That detects corruption, not authorship â€” it is not a signature.
-- Strongest policy: `go build` the engine yourself and set `binaryPath` to your build.
+- Strongest policy: build the engine yourself with an explicit compatible version, inspect it, and set `binaryPath` to that executable. The SDK checks `--version` before use.
 - Each engine request is capped at 64 KiB; query responses are bounded by the project file limit.
 
 ## V1 boundaries (non-negotiable)

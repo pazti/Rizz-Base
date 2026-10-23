@@ -28,6 +28,38 @@ func TestCLI(t *testing.T) {
 	}
 }
 
+func TestVersionCommand(t *testing.T) {
+	previousVersion := version
+	version = "1.2.3"
+	t.Cleanup(func() { version = previousVersion })
+
+	var output, errorOutput bytes.Buffer
+	status := runCommand([]string{"--version"}, strings.NewReader("not JSON"), &output, &errorOutput)
+	if status != 0 || errorOutput.Len() != 0 {
+		t.Fatalf("version command status=%d stderr=%q", status, errorOutput.String())
+	}
+	var info struct {
+		Version              string `json:"version"`
+		ProjectFormatVersion int    `json:"projectFormatVersion"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.Version != "1.2.3" || info.ProjectFormatVersion != projectFormatVersion {
+		t.Fatalf("unexpected version output: %s", output.String())
+	}
+}
+
+func TestCommandArguments(t *testing.T) {
+	var output, errorOutput bytes.Buffer
+	if status := runCommand([]string{"extra-arg"}, strings.NewReader(""), &output, &errorOutput); status != 2 {
+		t.Fatalf("unexpected status for extra argument: %d", status)
+	}
+	if output.Len() != 0 || !strings.Contains(errorOutput.String(), "Usage:") {
+		t.Fatalf("unexpected output: stdout=%q stderr=%q", output.String(), errorOutput.String())
+	}
+}
+
 func TestBadRequests(t *testing.T) {
 	for _, input := range []string{
 		`{`, `{}`, `null`, `{"operation":"delete"}`, `{"unknown":1}`,
