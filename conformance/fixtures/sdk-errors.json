@@ -1,0 +1,35 @@
+{
+  "name": "sdk-errors",
+  "steps": [
+    {
+      "id": "missing-engine",
+      "operation": "open",
+      "args": { "binaryPath": "$missingBinary" },
+      "expect": { "errorCode": "BINARY_UNAVAILABLE" }
+    },
+    {
+      "id": "incompatible-engine",
+      "operation": "open",
+      "args": { "binaryPath": "$incompatibleBinary" },
+      "expect": { "errorCode": "ENGINE_INCOMPATIBLE" }
+    },
+    {
+      "id": "invalid-engine-response",
+      "operation": "open",
+      "args": { "binaryPath": "$protocolErrorBinary" },
+      "expect": { "errorCode": "ENGINE_PROTOCOL_ERROR" }
+    },
+    {
+      "id": "nonzero-engine-exit",
+      "operation": "open",
+      "args": { "binaryPath": "$nonzeroBinary" },
+      "expect": { "errorCode": "ENGINE_ERROR" }
+    },
+    {
+      "id": "engine-timeout",
+      "operation": "open",
+      "args": { "timeoutMs": 1, "timeout_s": 0.000001 },
+      "expect": { "errorCode": "ENGINE_TIMEOUT" }
+    }
+  ]
+}

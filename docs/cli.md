@@ -4,11 +4,15 @@ The `rizzbase` executable is the whole database. SDKs are thin wrappers around i
 
 ## Calling convention
 
-- No subcommands, no flags. Usage is exactly:
+- Engine requests use no subcommands or flags. Usage is:
 ```text
 rizzbase < request.json
 ```
-- Extra argv is an error (exit 2).
+- `rizzbase --version` writes one JSON object and exits 0 without reading stdin:
+  `{"version":"1.1.0","projectFormatVersion":1}`. `version` is injected at
+  build time and defaults to `dev`; `projectFormatVersion` describes the
+  on-disk project format, independently of the engine version.
+- `rizzbase --help` prints usage. Other extra argv is an error (exit 2).
 - Reads **one** JSON object from stdin (max 64 KiB), writes **one** JSON object to stdout.
 - One operation per process. Exit 0 on success, 1 on failure.
 - Passphrase goes in the JSON body on stdin. Never as an argument.

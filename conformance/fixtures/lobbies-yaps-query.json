@@ -1,0 +1,225 @@
+{
+  "name": "lobbies-yaps-query",
+  "steps": [
+    { "id": "create", "operation": "create", "args": { "name": "Query fixture" } },
+    {
+      "id": "empty-lobby-list",
+      "operation": "lobby.list",
+      "expect": { "fields": { "lobbies.length": 0 } }
+    },
+    {
+      "id": "lobby",
+      "operation": "lobby.create",
+      "args": { "name": "general" },
+      "capture": { "lobby": "lobby.id" },
+      "expect": { "fields": { "lobby.name": "general" } }
+    },
+    {
+      "id": "lobby-list",
+      "operation": "lobby.list",
+      "expect": { "fields": { "lobbies.0.name": "general", "lobbies.length": 1 } }
+    },
+    {
+      "id": "missing-lobby",
+      "operation": "lobby.delete",
+      "args": { "lobbyId": "missing" },
+      "expect": { "errorCode": "LOBBY_NOT_FOUND" }
+    },
+    {
+      "id": "missing-yap",
+      "operation": "yap.get",
+      "args": { "lobbyId": "${lobby}", "yapId": "missing" },
+      "expect": { "errorCode": "YAP_NOT_FOUND" }
+    },
+    {
+      "id": "one-byte-id",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "x", "data": true }
+    },
+    {
+      "id": "128-byte-id",
+      "operation": "yap.create",
+      "args": {
+        "lobbyId": "${lobby}",
+        "yapId": { "$repeat": { "value": "x", "count": 128 } },
+        "data": true
+      }
+    },
+    {
+      "id": "129-byte-id-rejected",
+      "operation": "yap.create",
+      "args": {
+        "lobbyId": "${lobby}",
+        "yapId": { "$repeat": { "value": "x", "count": 129 } },
+        "data": true
+      },
+      "expect": { "errorCode": "ENGINE_ERROR" }
+    },
+    {
+      "id": "yap-z",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "z", "data": { "score": 7, "category": "beta", "user": { "active": true } } }
+    },
+    {
+      "id": "yap-a",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "a", "data": { "score": 3, "category": "zeta", "user": { "active": true } } }
+    },
+    {
+      "id": "yap-b",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "b", "data": { "score": 5, "category": "alpha", "user": { "active": true } } }
+    },
+    {
+      "id": "yap-c",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "c", "data": { "score": 5, "category": "alpha", "user": { "active": true } } }
+    },
+    {
+      "id": "yap-string-score",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "d", "data": { "score": "5", "category": "gamma", "user": { "active": true } } }
+    },
+    {
+      "id": "yap-list-order",
+      "operation": "yap.list",
+      "args": { "lobbyId": "${lobby}" },
+      "expect": { "fields": { "yaps.0.id": "a", "yaps.6.id": "z", "yaps.length": 7 } }
+    },
+    {
+      "id": "duplicate-yap",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "a", "data": { "score": 0 } },
+      "expect": { "errorCode": "YAP_EXISTS" }
+    },
+    {
+      "id": "query-filter-sort-limit",
+      "operation": "yap.query",
+      "args": {
+        "lobbyId": "${lobby}",
+        "query": {
+          "where": [
+            { "field": "user.active", "operator": "==", "value": true },
+            { "field": "score", "operator": ">=", "value": 3 }
+          ],
+          "orderBy": { "field": "score", "direction": "desc" },
+          "limit": 2
+        }
+      },
+      "expect": { "fields": { "yaps.0.id": "z", "yaps.1.id": "b" } }
+    },
+    {
+      "id": "query-greater",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "score", "operator": ">", "value": 5 }] } },
+      "expect": { "fields": { "yaps.0.id": "z", "yaps.length": 1 } }
+    },
+    {
+      "id": "query-less",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "score", "operator": "<", "value": 5 }] } },
+      "expect": { "fields": { "yaps.0.id": "a", "yaps.length": 1 } }
+    },
+    {
+      "id": "query-less-or-equal",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "score", "operator": "<=", "value": 5 }] } },
+      "expect": { "fields": { "yaps.0.id": "a", "yaps.1.id": "b", "yaps.2.id": "c", "yaps.length": 3 } }
+    },
+    {
+      "id": "query-not-equal",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "score", "operator": "!=", "value": 5 }] } },
+      "expect": { "fields": { "yaps.0.id": "a", "yaps.1.id": "d", "yaps.2.id": "z", "yaps.length": 3 } }
+    },
+    {
+      "id": "query-equal-ties",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "score", "operator": "==", "value": 5 }], "orderBy": { "field": "score", "direction": "asc" } } },
+      "expect": { "fields": { "yaps.0.id": "b", "yaps.1.id": "c", "yaps.length": 2 } }
+    },
+    {
+      "id": "query-string-order-ties",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "orderBy": { "field": "category", "direction": "asc" } } },
+      "expect": { "fields": { "yaps.0.id": "b", "yaps.1.id": "c", "yaps.2.id": "z", "yaps.3.id": "d", "yaps.4.id": "a" } }
+    },
+    {
+      "id": "query-string-comparison",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "category", "operator": ">=", "value": "gamma" }] } },
+      "expect": { "fields": { "yaps.0.id": "a", "yaps.1.id": "d", "yaps.length": 2 } }
+    },
+    {
+      "id": "missing-field-not-equal",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "where": [{ "field": "missing", "operator": "!=", "value": 5 }] } },
+      "expect": { "fields": { "yaps.length": 0 } }
+    },
+    {
+      "id": "zero-limit",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "limit": 0 } },
+      "expect": { "fields": { "yaps.length": 0 } }
+    },
+    {
+      "id": "negative-limit",
+      "operation": "yap.query",
+      "args": { "lobbyId": "${lobby}", "query": { "limit": -1 } },
+      "expect": { "errorCode": "INVALID_ARGUMENT" }
+    },
+    {
+      "id": "invalid-operator",
+      "operation": "yap.query",
+      "args": {
+        "lobbyId": "${lobby}",
+        "query": { "where": [{ "field": "score", "operator": "between", "value": 5 }] }
+      },
+      "expect": { "errorCode": "INVALID_ARGUMENT" }
+    },
+    {
+      "id": "oversized-request",
+      "operation": "yap.create",
+      "args": {
+        "lobbyId": "${lobby}",
+        "yapId": "large",
+        "data": { "payload": { "$repeat": { "value": "x", "count": 70000 } } }
+      },
+      "expect": { "errorCode": "INVALID_ARGUMENT" }
+    },
+    {
+      "id": "update",
+      "operation": "yap.update",
+      "args": { "lobbyId": "${lobby}", "yapId": "a", "data": { "score": 4 } },
+      "expect": { "fields": { "yap.data.score": 4 } }
+    },
+    {
+      "id": "get-updated",
+      "operation": "yap.get",
+      "args": { "lobbyId": "${lobby}", "yapId": "a" },
+      "expect": { "fields": { "data.score": 4 } }
+    },
+    {
+      "id": "delete-yap",
+      "operation": "yap.delete",
+      "args": { "lobbyId": "${lobby}", "yapId": "x" }
+    },
+    {
+      "id": "get-deleted-yap",
+      "operation": "yap.get",
+      "args": { "lobbyId": "${lobby}", "yapId": "x" },
+      "expect": { "errorCode": "YAP_NOT_FOUND" }
+    },
+    {
+      "id": "delete-lobby",
+      "operation": "lobby.delete",
+      "args": { "lobbyId": "${lobby}" }
+    },
+    {
+      "id": "cascade-yaps",
+      "operation": "yap.get",
+      "args": { "lobbyId": "${lobby}", "yapId": "z" },
+      "expect": { "errorCode": "LOBBY_NOT_FOUND" }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "engine-errors",
+  "setupFiles": {
+    "$corruptProject": { "brainrotBytes": 60 }
+  },
+  "setupDirectories": {
+    "$projectLock": { "path": "project.rizz.lock", "mode": 448 }
+  },
+  "steps": [
+    { "id": "create", "operation": "create", "args": { "name": "Error fixture" } },
+    {
+      "id": "project-busy",
+      "operation": "lobby.create",
+      "args": { "name": "blocked" },
+      "expect": { "errorCode": "PROJECT_BUSY" }
+    },
+    {
+      "id": "invalid-format",
+      "operation": "open",
+      "args": { "path": "$corruptProject" },
+      "expect": { "errorCode": "INVALID_FORMAT" }
+    },
+    {
+      "id": "empty-name",
+      "operation": "create",
+      "args": { "name": " " },
+      "expect": { "errorCode": "ENGINE_ERROR" }
+    }
+  ]
+}

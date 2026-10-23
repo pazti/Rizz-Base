@@ -1,6 +1,6 @@
 import { link, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { ensureBinary } from "./binary.js";
+import { ensureCompatibleEngine, resolveBinary } from "./binary.js";
 import { RizzbaseError } from "./errors.js";
 import { callEngine } from "./transport.js";
 import type { Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, RizzbaseOptions, Yap } from "./types.js";
@@ -77,7 +77,8 @@ export class Rizzbase {
 
   private request(operation: string, fields: object = {}): Promise<Record<string, unknown>> {
     const job = this.#queue.then(async () => {
-      const binary = await ensureBinary(this.#options);
+      const binary = await resolveBinary(this.#options);
+      await ensureCompatibleEngine(binary);
       return callEngine(binary, { operation, path: this.path, passphrase: this.#passphrase, ...fields }, this.#options.timeoutMs ?? 30_000);
     });
     this.#queue = job.catch(() => {});

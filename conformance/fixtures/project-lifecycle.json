@@ -1,0 +1,29 @@
+{
+  "name": "project-lifecycle",
+  "steps": [
+    {
+      "id": "create",
+      "operation": "create",
+      "args": { "name": "Conformance project" },
+      "expect": { "fields": { "project.name": "Conformance project", "project.version": 1 } }
+    },
+    {
+      "id": "create-existing",
+      "operation": "create",
+      "args": { "name": "Must not replace" },
+      "expect": { "errorCode": "FILE_EXISTS" }
+    },
+    {
+      "id": "wrong-passphrase",
+      "operation": "open",
+      "args": { "passphrase": "wrong conformance passphrase" },
+      "expect": { "errorCode": "AUTHENTICATION_FAILED" }
+    },
+    {
+      "id": "open-missing",
+      "operation": "open",
+      "args": { "path": "$missingProject" },
+      "expect": { "errorCode": "FILE_NOT_FOUND" }
+    }
+  ]
+}

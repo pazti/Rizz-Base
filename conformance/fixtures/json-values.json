@@ -1,0 +1,24 @@
+{
+  "name": "json-values",
+  "steps": [
+    { "id": "create", "operation": "create", "args": { "name": "JSON values" } },
+    {
+      "id": "lobby",
+      "operation": "lobby.create",
+      "args": { "name": "values" },
+      "capture": { "lobby": "lobby.id" }
+    },
+    { "id": "object", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "object", "data": { "key": "value" } } },
+    { "id": "array", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "array", "data": [1, "two", false] } },
+    { "id": "string", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "string", "data": "text" } },
+    { "id": "number", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "number", "data": 42 } },
+    { "id": "boolean", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "boolean", "data": true } },
+    { "id": "null", "operation": "yap.create", "args": { "lobbyId": "${lobby}", "yapId": "null", "data": null } },
+    { "id": "get-object", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "object" }, "expect": { "fields": { "data.key": "value" } } },
+    { "id": "get-array", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "array" }, "expect": { "fields": { "data.1": "two" } } },
+    { "id": "get-string", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "string" }, "expect": { "fields": { "data": "text" } } },
+    { "id": "get-number", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "number" }, "expect": { "fields": { "data": 42 } } },
+    { "id": "get-boolean", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "boolean" }, "expect": { "fields": { "data": true } } },
+    { "id": "get-null", "operation": "yap.get", "args": { "lobbyId": "${lobby}", "yapId": "null" }, "expect": { "fields": { "data": null } } }
+  ]
+}

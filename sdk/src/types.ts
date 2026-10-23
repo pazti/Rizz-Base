@@ -19,12 +19,8 @@ export interface Filter { field: string; operator: Operator; value: JsonValue }
 export interface OrderBy { field: string; direction: OrderDirection }
 export interface QueryOptions { where?: readonly Filter[]; orderBy?: OrderBy; limit?: number }
 export interface RizzbaseOptions {
-  /** Explicit trusted executable; bypasses all downloads. */
+  /** Explicit trusted executable; takes precedence over RIZZBASE_BINARY and PATH. */
   binaryPath?: string;
-  /** Defaults to ~/.cache/rizzbase. */
-  cacheDir?: string;
-  /** HTTPS release mirror containing v{version}/ assets. */
-  binaryDownloadBaseUrl?: string;
   /** Per-process timeout, default 30 seconds. */
   timeoutMs?: number;
 }

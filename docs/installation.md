@@ -1,117 +1,115 @@
 # Install the engine binary
 
-You do **not** need npm to run Rizzbase. Download the Go engine yourself, put it on your `PATH`, and every SDK talks to it. This is the Part 2 direction: the SDK stops downloading binaries, you own the binary.
+You do **not** need npm to run Rizzbase. Install the engine yourself; the SDK
+never downloads or executes a binary implicitly.
 
-Binaries live on versioned GitHub releases with a `SHA256SUMS` manifest
-(current release: `v1.1.0`):
+## Linux and macOS
+
+Download the installer, inspect it, then run it. Do not pipe a remote script
+directly into a shell:
+
+```sh
+curl -fLO https://raw.githubusercontent.com/pazti/Rizz-Base/main/install.sh
+less install.sh
+chmod +x install.sh
+./install.sh
+```
+
+The installer detects Linux/macOS and x64/arm64, downloads the pinned release
+asset, verifies its SHA-256 against the exact matching `SHA256SUMS` entry, then
+installs it atomically at `~/.rizzbase/bin/rizzbase` with mode `0755`. It
+requires `curl` and either `sha256sum` or `shasum`; it does not require npm or
+`sudo`.
+
+Add the printed PATH command to your shell profile, or run:
+
+```sh
+export PATH="$HOME/.rizzbase/bin:$PATH"
+rizzbase --version
+```
+
+## Windows (PowerShell)
+
+Download and inspect the installer before running it:
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/pazti/Rizz-Base/main/install.ps1" -OutFile ".\install.ps1"
+Get-Content .\install.ps1
+.\install.ps1
+```
+
+It supports Windows x64 and arm64, verifies the exact asset checksum with
+`Get-FileHash`, and atomically replaces
+`%USERPROFILE%\.rizzbase\bin\rizzbase.exe` only after verification. The
+installer prints the commands to add the directory to your user PATH and to
+check the version.
+
+## Pinning a version or changing the install directory
+
+The installers default to release `1.1.0` and `~/.rizzbase/bin`. Set
+`RIZZBASE_VERSION` and/or `RIZZBASE_INSTALL_DIR` before running the installer
+to choose another version or destination. Set
+`RIZZBASE_RELEASE_BASE_URL` only when using a compatible release mirror.
+
+The Node SDK supports engine versions `>=1.1.0 <2.0.0` and project format `1`.
+Engine and SDK release versions do not need to match. `rizzbase --version`
+prints machine-readable JSON containing both values.
+
+## Manual installation
+
+Release assets are versioned and have a `SHA256SUMS` file:
 
 ```text
 https://github.com/pazti/Rizz-Base/releases/download/v1.1.0/<asset>
 https://github.com/pazti/Rizz-Base/releases/download/v1.1.0/SHA256SUMS
 ```
 
-## Pick your asset
-
-| OS | Arch | Asset |
-| --- | --- | --- |
-| Linux | x64 | `rizzbase-linux-amd64` |
-| Linux | arm64 | `rizzbase-linux-arm64` |
-| macOS | x64 (Intel) | `rizzbase-darwin-amd64` |
-| macOS | arm64 (Apple Silicon) | `rizzbase-darwin-arm64` |
-| Windows | x64 | `rizzbase-windows-amd64.exe` |
-| Windows | arm64 | `rizzbase-windows-arm64.exe` |
-
-The SDK you use must match the release tag (today: `v1.1.0`).
-
-## Linux
+Assets are named `rizzbase-linux-{amd64,arm64}`,
+`rizzbase-darwin-{amd64,arm64}`, and
+`rizzbase-windows-{amd64,arm64}.exe`. If installing manually, download the
+asset using its exact release filename into the same directory as
+`SHA256SUMS`, then verify only that asset's exact manifest line:
 
 ```sh
-VERSION=1.1.0
-ASSET=rizzbase-linux-amd64   # or rizzbase-linux-arm64
-BASE=https://github.com/pazti/Rizz-Base/releases/download/v$VERSION
-
-mkdir -p ~/.rizzbase/bin
-curl -fL -o ~/.rizzbase/bin/rizzbase "$BASE/$ASSET"
-curl -fL -o /tmp/SHA256SUMS "$BASE/SHA256SUMS"
-cd ~/.rizzbase/bin && grep " $ASSET\$" /tmp/SHA256SUMS | sha256sum -c -
-chmod +x ~/.rizzbase/bin/rizzbase
+ASSET=rizzbase-linux-amd64 # choose the asset for your platform
+awk -v asset="$ASSET" '$2 == asset { print }' SHA256SUMS | sha256sum -c -
 ```
 
-Add to `PATH` (pick your shell):
-
-```sh
-# ~/.bashrc or ~/.zshrc
-export PATH="$HOME/.rizzbase/bin:$PATH"
-```
-
-Then `source ~/.bashrc` (or open a new terminal) and check:
-
-```sh
-echo '{"operation":"open","path":"x.rizz","passphrase":"y"}' | rizzbase || true
-```
-
-## macOS
-
-```sh
-VERSION=1.1.0
-ASSET=rizzbase-darwin-arm64   # Apple Silicon; Intel uses rizzbase-darwin-amd64
-BASE=https://github.com/pazti/Rizz-Base/releases/download/v$VERSION
-
-mkdir -p ~/.rizzbase/bin
-curl -fL -o ~/.rizzbase/bin/rizzbase "$BASE/$ASSET"
-curl -fL -o /tmp/SHA256SUMS "$BASE/SHA256SUMS"
-cd ~/.rizzbase/bin && grep " $ASSET\$" /tmp/SHA256SUMS | shasum -a 256 -c -
-chmod +x ~/.rizzbase/bin/rizzbase
-xattr -d com.apple.quarantine ~/.rizzbase/bin/rizzbase 2>/dev/null || true
-```
-
-Add to `PATH`:
-
-```sh
-# ~/.zshrc (default on modern macOS)
-export PATH="$HOME/.rizzbase/bin:$PATH"
-```
-
-If macOS blocks the binary, open **System Settings → Privacy & Security** and allow it, or re-run the `xattr` line above.
-
-## Windows (PowerShell)
+On macOS, replace `sha256sum -c -` with `shasum -a 256 -c -`. In PowerShell,
+select the exact filename and compare the resulting hash:
 
 ```powershell
-$Version = "1.1.0"
-$Asset = "rizzbase-windows-amd64.exe"  # or rizzbase-windows-arm64.exe
-$Base = "https://github.com/pazti/Rizz-Base/releases/download/v$Version"
-$Dir = "$HOME\.rizzbase\bin"
-New-Item -ItemType Directory -Force -Path $Dir | Out-Null
-Invoke-WebRequest -Uri "$Base/$Asset" -OutFile "$Dir\rizzbase.exe"
-Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile "$env:TEMP\SHA256SUMS"
-
-# Verify checksum
-$Expected = (Select-String -Path "$env:TEMP\SHA256SUMS" -Pattern $Asset).Line.Split()[0]
-$Actual = (Get-FileHash "$Dir\rizzbase.exe" -Algorithm SHA256).Hash.ToLower()
+$Asset = "rizzbase-windows-amd64.exe"
+$Entries = foreach ($Line in Get-Content .\SHA256SUMS) {
+  $Match = [regex]::Match($Line, '^([a-fA-F0-9]{64})\s+\*?(\S+)$')
+  if ($Match.Success -and $Match.Groups[2].Value -ceq $Asset) { $Match.Groups[1].Value }
+}
+if (@($Entries).Count -ne 1) { throw "No unique checksum entry for $Asset" }
+$Expected = $Entries[0].ToLowerInvariant()
+$Actual = (Get-FileHash -LiteralPath ".\$Asset" -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($Expected -ne $Actual) { throw "Checksum mismatch" }
 ```
 
-Add to `PATH` for the current user:
+Only after verification, rename/move the asset into place. Do not verify a
+manifest line that names a different local filename.
 
-```powershell
-$Path = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($Path -notlike "*\.rizzbase\bin*") {
-  [Environment]::SetEnvironmentVariable("Path", "$Path;$Dir", "User")
-}
-# Open a NEW terminal, then:
-rizzbase
-```
-
-> The binary takes no CLI flags. It reads one JSON request on stdin — see CLI reference.
-
-## Build from source instead
-
-Strongest supply-chain option. Requires Go 1.24+:
+Checksums detect corruption but do not prove who published a binary. For a
+stronger supply-chain policy, build the engine from source, inspect it, and
+set the SDK's `binaryPath` to that executable. A source build reports `dev`;
+pass a stable semver at build time to use it with the Node SDK:
 
 ```sh
-git clone https://github.com/pazti/Rizz-Base
-cd Rizz-Base/engine
-go build -o ~/.rizzbase/bin/rizzbase ./cmd/rizzbase
+cd engine
+go build -ldflags="-X main.version=1.1.0" -o ~/.rizzbase/bin/rizzbase ./cmd/rizzbase
 ```
 
-Point any SDK at it with `binaryPath`, or leave it on `PATH` so SDKs find it first.
+## SDK binary selection
+
+The SDK resolves its executable in this order:
+
+1. `binaryPath` in the SDK constructor.
+2. `RIZZBASE_BINARY`.
+3. `rizzbase` (or `rizzbase.exe` on Windows) on `PATH`.
+
+If no executable is found, the SDK reports `BINARY_UNAVAILABLE` with the
+locations it searched. It never downloads a binary.
