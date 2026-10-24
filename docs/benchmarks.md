@@ -41,11 +41,7 @@ update averages 1.18 s with roughly 512 MiB of cumulative allocations. This
 supports treating larger single-Lobby workloads as a performance concern,
 even before reaching the 64 MiB file cap. It does not by itself select a
 daemon or index design: query still decrypts the whole-file envelope, so an
-index cannot avoid the current full-file decryption cost. Before choosing a
-Phase C architecture, profile the timed query path separately and collect
-representative application workload and latency targets. Repeated SDK calls
-may benefit from a persistent process, but that tradeoff also changes the
-process and secret-handling boundary.
+index cannot avoid the current full-file decryption cost.
 
 This is not a fixed Yap-count limit. The hard encoded project limit is 64 MiB,
 but record sizes and metadata vary, so the file-size limit may be reached at
@@ -70,3 +66,90 @@ open, filtered and ordered cursor-page query, and replacement of one Yap. Use
 `-benchtime=10x` for routine comparisons; the larger reference points used
 `-benchtime=3x` to keep the run bounded. The benchmark source is
 [benchmark_test.go](../engine/core/benchmark_test.go).
+
+## SDK end-to-end benchmarks
+
+The SDK runners in [`benchmarks/`](../benchmarks/) measure one `open`, one
+filtered and ordered query page, and one single-Yap update through the
+production Node and Python APIs. Each timed call includes SDK request
+preparation, spawning a fresh engine process, stdin/stdout protocol handling,
+whole-file decryption, and (for update) encryption and durable file publish.
+The one-time engine compatibility check and project setup/import are outside
+the timed calls. These measurements are the relevant basis for deciding
+whether keeping a process alive could help; compare them with the engine-only
+results above to isolate language/process overhead.
+
+From the repository root, build the SDK and compatible engine, install the
+Python package into the environment, then run both runners against the same
+engine version and host:
+
+```sh
+cd sdk
+npm ci
+npm run build
+cd ../engine
+go build -ldflags="-X main.version=1.2.0" -o /tmp/rizzbase ./cmd/rizzbase
+cd ..
+python -m pip install ./python
+export RIZZBASE_BINARY=/tmp/rizzbase
+node benchmarks/node-sdk.mjs > /tmp/node-sdk-bench.json
+python benchmarks/python-sdk.py > /tmp/python-sdk-bench.json
+```
+
+By default they seed 100, 1,000, 5,000, 10,000, and 20,000 small Yaps via an
+SDK backup import outside the timed section and take five samples per
+operation. Set `RIZZBASE_BENCH_COUNTS=100,1000` and
+`RIZZBASE_BENCH_REPETITIONS=3` to run a shorter sample. Each runner emits JSON
+with runtime, platform, exact encrypted file size, per-sample latency, mean,
+and median. Do not compare runs across different hosts, engine builds, runtime
+versions, or storage conditions as if they were controlled results.
+
+The SDK subprocess boundary adds some fixed overhead, but most large-project
+latency is expected to remain in PBKDF2, whole-file decoding, and JSON parsing.
+A daemon would reduce process startup while retaining those cryptographic
+costs; an index would still require decrypting the current whole-file envelope.
+The measured end-to-end curves below 20,000 Yaps do not justify introducing
+either architectural change without a concrete application workload,
+acceptable latency target, and a design that addresses whole-file
+decryption.
+
+### SDK reference measurements
+
+Measured sequentially on Linux/amd64 with 2 vCPUs (Intel Xeon Platinum 8573C),
+Go engine 1.2.0, Node.js 24.21.0, Python 3.14.2, and three timed calls per
+operation. Each value is the median in milliseconds. The project was imported
+from a deterministic JSON fixture outside the timed section; encryption salt
+and nonce make the exact file size vary slightly between runs. Each timed
+operation starts a new engine process.
+
+| Yaps | Approx. file size | Node open | Node query page | Node update | Python open | Python query page | Python update |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.22 MB | 137 | 127 | 242 | 165 | 165 | 265 |
+| 1,000 | 2.18 MB | 148 | 150 | 283 | 166 | 165 | 317 |
+| 5,000 | 10.91 MB | 258 | 313 | 538 | 275 | 267 | 522 |
+| 10,000 | 21.84 MB | 343 | 372 | 774 | 377 | 417 | 767 |
+| 20,000 | 43.80 MB | 572 | 696 | 1,396 | 591 | 767 | 1,320 |
+
+Three samples are enough to expose the growth curve but not to characterize
+tail latency; one 5,000-Yap Node query sample was substantially slower than
+the other two. Treat the table as an indicative local baseline, not a
+cross-platform guarantee. Python and Node results are close at larger sizes,
+and the SDK-level timings are generally within a few hundred milliseconds of
+the direct core measurements above. That does not establish process startup
+as the dominant cost. A persistent daemon is not justified by these results
+alone; a larger sample, target application SLO, and explicit security/process
+model are needed first.
+
+Run both SDK measurements sequentially on an otherwise idle machine to avoid
+CPU contention:
+
+```sh
+RIZZBASE_BINARY=/tmp/rizzbase RIZZBASE_BENCH_REPETITIONS=3 \
+  node benchmarks/node-sdk.mjs > /tmp/node-sdk-bench.json
+RIZZBASE_BINARY=/tmp/rizzbase RIZZBASE_BENCH_REPETITIONS=3 \
+  PYTHONPATH=python/src python3 benchmarks/python-sdk.py > /tmp/python-sdk-bench.json
+```
+
+The SDK runner source is
+[node-sdk.mjs](../benchmarks/node-sdk.mjs) and
+[python-sdk.py](../benchmarks/python-sdk.py).
