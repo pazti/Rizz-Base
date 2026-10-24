@@ -221,7 +221,11 @@ await restored.importBackup("./backup.json");
 JSON backups contain decrypted project data. Store them securely, do not commit
 them, and remove them when no longer needed. Export and import refuse to
 overwrite files; restore creates an encrypted Project using the supplied
-passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project).
+passphrase. Export/import into a new `.rizz` path is also the supported way to
+rotate a passphrase; it is not an in-place key change. Stop writes and verify
+the imported project before switching applications. See the
+[SDK backup API](docs/node-sdk.md#project) and
+[rotation procedure](docs/security.md#passphrase-rotation).
 
 ## Security and limits
 
@@ -230,7 +234,8 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
   arguments. The SDK sends it only to its local engine over stdin.
 - Projects use AES-256-GCM with PBKDF2-HMAC-SHA256 at 600,000 iterations.
   Wrong passphrases and damaged ciphertext fail authentication. There is no
-  passphrase recovery or key rotation.
+  passphrase recovery; rotation requires the current passphrase and a protected
+  plaintext JSON export/import migration.
 - The SDK only runs an engine you provide through `binaryPath`,
   `RIZZBASE_BINARY`, or `PATH`, in that order. It checks the engine's reported
   version and project format before using it.
@@ -240,6 +245,9 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
   before manually removing its adjacent `.lock` directory.
 - Each operation's JSON request is limited to 64 KiB; query results are
   bounded by the 64 MiB encoded-project file limit.
+- Performance depends on encrypted Project size; see the
+  [measured engine benchmarks](docs/benchmarks.md) before choosing a Lobby
+  capacity.
 - This is local-only V1: no realtime, cloud storage, multi-user access, remote
   backup, or UI connection. The Go API and CLI have their own documented limits.
 

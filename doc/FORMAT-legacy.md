@@ -25,8 +25,10 @@ write uses fresh random salt and nonce values. The Brainrot words only encode
 data; they do not provide security.
 
 V1 reads the entire file into memory and limits the encoded text to 64 MiB.
-There is no passphrase recovery, key rotation, or WAL. The SDK can export and
-restore a plaintext JSON backup; protect it as sensitive data. A wrong
+There is no passphrase recovery or WAL. A passphrase can be rotated only while
+the current passphrase is known, by exporting and restoring a plaintext JSON
+backup into a new encrypted Project; this is not an in-place key change.
+Protect the backup as sensitive data. A wrong
 passphrase and authenticated-data corruption return the same authentication
 error. Keep a strong passphrase and separate backups.
 

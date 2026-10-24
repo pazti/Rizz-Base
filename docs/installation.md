@@ -58,12 +58,33 @@ prints machine-readable JSON containing both values.
 
 ## Manual installation
 
-Release assets are versioned and have a `SHA256SUMS` file:
+Release assets are versioned and have a `SHA256SUMS` file. Releases created
+after the signed-release workflow is enabled will also include a Sigstore
+Cosign bundle that signs the checksum manifest and binds it to the GitHub
+release workflow identity. Older releases may not have a signature bundle.
+For a signed release, verify that signature before trusting the checksums:
 
 ```text
-https://github.com/pazti/Rizz-Base/releases/download/v1.1.0/<asset>
-https://github.com/pazti/Rizz-Base/releases/download/v1.1.0/SHA256SUMS
+https://github.com/pazti/Rizz-Base/releases/download/<tag>/<asset>
+https://github.com/pazti/Rizz-Base/releases/download/<tag>/SHA256SUMS
+https://github.com/pazti/Rizz-Base/releases/download/<tag>/SHA256SUMS.sigstore.json
 ```
+
+Install [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/)
+and verify the manifest bundle. Download the files for the exact release tag
+you are installing:
+
+```sh
+cosign verify-blob SHA256SUMS \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity-regexp '^https://github\.com/pazti/Rizz-Base/.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Only after successful signature verification, verify the selected asset
+against `SHA256SUMS` as shown below. The installers currently check the
+checksum but do not verify the Sigstore signature automatically; users
+requiring publisher-authenticity verification should run Cosign first.
 
 Assets are named `rizzbase-linux-{amd64,arm64}`,
 `rizzbase-darwin-{amd64,arm64}`, and
@@ -94,8 +115,13 @@ if ($Expected -ne $Actual) { throw "Checksum mismatch" }
 Only after verification, rename/move the asset into place. Do not verify a
 manifest line that names a different local filename.
 
-Checksums detect corruption but do not prove who published a binary. For a
-stronger supply-chain policy, build the engine from source, inspect it, and
+The release workflow builds each platform binary twice using Go 1.27.1 with
+trimmed paths and VCS metadata disabled; the second build must match byte for
+byte before publication. It signs `SHA256SUMS` using keyless Sigstore
+Cosign/GitHub OIDC. The signature verifies the release manifest and its
+workflow identity; the manifest in turn hashes all platform binaries.
+
+For an independent build policy, build the engine from source, inspect it, and
 set the SDK's `binaryPath` (Node.js) or `binary_path` (Python) to that
 executable. A source build reports `dev`;
 pass a stable semver at build time to use it with the Node SDK:

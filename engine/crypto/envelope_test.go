@@ -60,3 +60,15 @@ func TestInvalidEnvelope(t *testing.T) {
 		t.Fatal("accepted empty passphrase")
 	}
 }
+
+func FuzzInspectEnvelope(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("not an envelope"))
+	f.Add(make([]byte, 60))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 1<<20 {
+			t.Skip()
+		}
+		_, _ = Inspect(data)
+	})
+}

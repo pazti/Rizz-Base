@@ -7,7 +7,8 @@ Rizzbase protects a file on your device. It does not protect you from yourself â
 - Choose a strong, unique passphrase. Get it from private input or a secrets manager.
 - Never commit, log, print, or put it in CLI arguments. The SDK and CLI send it on stdin only.
 - Do not expose the SDK through an untrusted server endpoint.
-- There is **no recovery and no key rotation**. Lose it and the file is unreadable.
+- There is **no passphrase recovery**. If you lose the passphrase, the encrypted Project is unreadable.
+- Passphrase rotation is possible only when you still know the current passphrase: export the Project to a decrypted JSON backup, then import it into a new `.rizz` file using the new passphrase. This is a full decrypt-and-re-encrypt migration, not an in-place key change.
 
 ## Encryption
 
@@ -26,10 +27,41 @@ Rizzbase protects a file on your device. It does not protect you from yourself â
 - Lock owner state is `active`, `stale` (dead PID on this host), or `unknown` (remote host, missing/malformed metadata, or inconclusive process check). Diagnostics never remove locks. Confirm a writer cannot still run before manually removing a stale lock; do not treat `unknown` as stale.
 - SDK writes wait up to the configured lock-wait budget for an active lock; stale locks are reported immediately. Writes are not replayed after timeout because the outcome may be ambiguous.
 - New bytes are fully written + synced before atomic rename. The old file survives until publish. Network filesystems without atomic same-directory rename are unsupported.
+- The engine has Go fuzz targets for Brainrot encoding, envelope inspection, and Project JSON parsing. Storage tests kill a subprocess after its replacement file is synced but before publish, then verify the original encrypted file still decrypts; this validates the local-filesystem atomic-publish boundary, not arbitrary power-loss or network-filesystem behavior.
+
+## Passphrase rotation
+
+Rotation creates a new encrypted Project file; it does not change the encryption key in the existing file. The migration preserves the Project content and IDs, but the new file has newly generated encryption parameters.
+
+1. Stop application writes to the source Project and make sure its latest data is present.
+2. Open the source with its current passphrase and export a JSON backup to a protected location.
+3. Create a new SDK instance for a different `.rizz` destination, supplying the new passphrase, then import the backup.
+4. Open the new Project with the new passphrase and verify its contents before directing applications to the new path.
+5. Keep the original encrypted file and a protected backup until verification is complete. Then remove the plaintext backup and retire old encrypted copies according to your backup-retention policy.
+
+For example, in Node.js:
+
+```ts
+const source = new Rizzbase("./project.rizz", getCurrentPassphrasePrivately());
+await source.export("./project-rotation.json");
+
+const destination = new Rizzbase("./project-rotated.rizz", getNewPassphrasePrivately());
+await destination.importBackup("./project-rotation.json");
+await destination.open();
+```
+
+The Python SDK uses the same flow with `source.export(...)` and
+`destination.import_backup(...)`. Exported JSON is plaintext and sensitive;
+protect the backup directory and do not place it in source control, logs, or
+shared temporary storage. Export and import refuse to overwrite existing
+files. If import fails, the original encrypted Project remains unchanged.
+Rotation cannot recover a Project if its current passphrase has already been
+lost.
 
 ## Supply chain
 
-- Manual installs verify SHA-256 against the release `SHA256SUMS`. That detects corruption, not authorship â€” it is not a signature.
+- The release workflow is configured to rebuild each platform asset independently with a pinned Go toolchain and require byte-for-byte matches before publishing. It signs the SHA-256 manifest using keyless Sigstore Cosign/GitHub OIDC; verify the bundle and expected release workflow identity before trusting the manifest. The manifest then authenticates each listed asset by hash. This workflow has not yet been exercised by publishing a new release.
+- The install scripts currently verify SHA-256 but do not automatically verify the Cosign bundle. For publisher-authenticity checks, verify `SHA256SUMS.sigstore.json` with Cosign first, as shown in the [installation guide](./installation.md#manual-installation).
 - Strongest policy: build the engine yourself with an explicit compatible version, inspect it, and set `binaryPath` to that executable. The SDK checks `--version` before use.
 - Each engine request is capped at 64 KiB; query responses are bounded by the project file limit.
 

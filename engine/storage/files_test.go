@@ -1,13 +1,105 @@
 package storage
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+const atomicCrashPathEnv = "RIZZBASE_ATOMIC_CRASH_PATH"
+
+func TestAtomicWriteCrashHelper(t *testing.T) {
+	path := os.Getenv(atomicCrashPathEnv)
+	if path == "" {
+		return
+	}
+	readyPath := path + ".ready"
+	err := writeAtomicallyBeforePublish(path, bytes.Repeat([]byte("replacement"), 1<<15), true, func() error {
+		if err := os.WriteFile(readyPath, []byte("ready"), 0600); err != nil {
+			return err
+		}
+		for {
+			time.Sleep(time.Hour)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAtomicWriteCrashBeforePublishPreservesOriginal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "crash.rizz")
+	original := []byte(`{"version":1,"name":"safe","createdAt":"2025-01-01T00:00:00Z","lobbies":{}}`)
+	if err := Create(path, "passphrase", original); err != nil {
+		t.Fatal(err)
+	}
+	originalFile, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	command := exec.Command(os.Args[0], "-test.run=^TestAtomicWriteCrashHelper$")
+	command.Env = append(os.Environ(), atomicCrashPathEnv+"="+path)
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	readyPath := path + ".ready"
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, err := os.Stat(readyPath); err == nil {
+			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+			t.Fatalf("inspect child readiness: %v", err)
+		}
+		if time.Now().After(deadline) {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+			t.Fatal("writer did not reach the pre-publish point")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := command.Process.Kill(); err != nil {
+		_ = command.Wait()
+		t.Fatalf("kill writer before publish: %v", err)
+	}
+	if err := command.Wait(); err == nil {
+		t.Fatal("writer unexpectedly exited before it was killed")
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("original project was lost after writer crash: %v", err)
+	}
+	if !bytes.Equal(got, originalFile) {
+		t.Fatal("original encrypted project changed after writer crash")
+	}
+	reopened, err := Read(path, "passphrase")
+	if err != nil || !bytes.Equal(reopened, original) {
+		t.Fatalf("original project could not be reopened after writer crash: %v", err)
+	}
+	temporaryFiles, err := filepath.Glob(filepath.Join(dir, ".rizzbase-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(temporaryFiles) != 1 {
+		t.Fatalf("expected one unpublished temporary file, got %v", temporaryFiles)
+	}
+	partial, err := os.ReadFile(temporaryFiles[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(partial, bytes.Repeat([]byte("replacement"), 1<<15)) {
+		t.Fatal("temporary file was not fully written before simulated crash")
+	}
+}
 
 func TestModifyWritesOwnerMetadataAndReportsActiveWriter(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "active.rizz")

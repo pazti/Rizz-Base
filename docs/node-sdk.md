@@ -106,6 +106,13 @@ const restored = new Rizzbase("./restored.rizz", getPassphrasePrivately());
 await restored.importBackup("./backup.json");
 ```
 
+This export/import flow is also the supported way to rotate a passphrase:
+export with the current passphrase, then import into a different `.rizz` path
+using the new passphrase. It does not change a file in place. Stop writes and
+verify the imported Project before switching applications. The JSON backup is
+decrypted sensitive data; protect and remove it when no longer needed. See the
+[security guide](./security.md#passphrase-rotation) for the full procedure.
+
 For complete runnable apps, see the `examples/` folder in the repository (Notes and Todo).
 
 ### Lobby

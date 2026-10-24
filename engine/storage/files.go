@@ -454,6 +454,10 @@ func listTempFiles(dir, lockPath string) ([]string, error) {
 // writeAtomically publishes a complete, synced file in the destination
 // directory. create=false uses an atomic hard-link so existing files are safe.
 func writeAtomically(path string, data []byte, replace bool) error {
+	return writeAtomicallyBeforePublish(path, data, replace, nil)
+}
+
+func writeAtomicallyBeforePublish(path string, data []byte, replace bool, beforePublish func() error) error {
 	dir := filepath.Dir(path)
 	f, err := os.CreateTemp(dir, ".rizzbase-*")
 	if err != nil {
@@ -471,6 +475,11 @@ func writeAtomically(path string, data []byte, replace bool) error {
 	}
 	if err := f.Close(); err != nil {
 		return err
+	}
+	if beforePublish != nil {
+		if err := beforePublish(); err != nil {
+			return err
+		}
 	}
 	if replace {
 		if err := os.Rename(temp, path); err != nil {

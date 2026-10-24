@@ -129,7 +129,12 @@ permissions, capped at 64 MiB, and refuses to overwrite). Restoring is
 (wrong shape is `INVALID_BACKUP`) before creating the encrypted destination.
 Both sides refuse to overwrite existing files, and the backup path must end
 in `.json` while the destination ends in `.rizz`. Treat backups as sensitive
-plaintext.
+plaintext. For passphrase rotation, export with the current passphrase and
+import into a different `.rizz` destination using the new passphrase. This
+decrypts and re-encrypts the whole Project; it does not modify the original
+file in place. Stop writes during the migration and verify the new file before
+switching applications. See the [security guide](./security.md#passphrase-rotation)
+for the recommended procedure.
 
 ## Limits to design around
 

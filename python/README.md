@@ -65,6 +65,30 @@ and performs full decrypt/validation using the instance passphrase.
 Cross-instance and cross-process behavior is described in the
 [concurrency contract](../docs/concurrency.md).
 
+### Passphrase rotation
+
+There is no passphrase recovery or in-place key change. If you know the
+current passphrase, rotate by exporting a plaintext JSON backup and importing
+it into a new encrypted Project with a new passphrase:
+
+```python
+from getpass import getpass
+from rizzbase import Rizzbase
+
+source = Rizzbase("./project.rizz", getpass("Current passphrase: "))
+source.export("./project-rotation.json")
+
+destination = Rizzbase("./project-rotated.rizz", getpass("New passphrase: "))
+destination.import_backup("./project-rotation.json")
+destination.open()  # Verify the new Project before switching applications.
+```
+
+Stop writes during migration, protect the backup because it contains
+decrypted Project data, and keep the source until the imported Project has
+been verified. Export and import do not overwrite existing files. See the
+[security guide](../docs/security.md#passphrase-rotation) for the complete
+rotation and cleanup guidance.
+
 `db.create_yaps(lobby_id, [{"id": "...", "data": ...}, ...])` atomically
 creates 1–1000 Yaps in one engine process; duplicate IDs or an existing ID
 reject the full batch. For pagination, `db.query_yap_page(lobby_id, options)`
