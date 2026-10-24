@@ -60,7 +60,7 @@ lost.
 
 ## Supply chain
 
-- The release workflow is configured to rebuild each platform asset independently with a pinned Go toolchain and require byte-for-byte matches before publishing. It signs the SHA-256 manifest using keyless Sigstore Cosign/GitHub OIDC; verify the bundle and expected release workflow identity before trusting the manifest. The manifest then authenticates each listed asset by hash. This workflow has not yet been exercised by publishing a new release.
+- The release workflow rebuilds each platform asset independently with a pinned Go toolchain and requires byte-for-byte matches before publishing. It signs the SHA-256 manifest using keyless Sigstore Cosign/GitHub OIDC; verify the bundle and expected release workflow identity before trusting the manifest. The manifest then authenticates each listed asset by hash. The v1.2.0 release completed this workflow successfully.
 - The install scripts currently verify SHA-256 but do not automatically verify the Cosign bundle. For publisher-authenticity checks, verify `SHA256SUMS.sigstore.json` with Cosign first, as shown in the [installation guide](./installation.md#manual-installation).
 - Strongest policy: build the engine yourself with an explicit compatible version, inspect it, and set `binaryPath` to that executable. The SDK checks `--version` before use.
 - Each engine request is capped at 64 KiB; query responses are bounded by the project file limit.

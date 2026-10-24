@@ -266,8 +266,9 @@ npx tsc --noEmit --strict --target ES2022 --module Node16 \
 
 Go 1.24+ and Node.js 20+ are required. The SDK's tests build the local Go CLI
 and exercise it using temporary encrypted projects. Binary releases build six
-OS/architecture variants when a matching version tag is pushed; the current
-source version expects `v1.1.0`.
+OS/architecture variants when a matching version tag is pushed. The latest
+engine release is `v1.2.0`; Node.js and Python SDK packages remain on their
+independent `1.1.0` version line.
 
 See [SDK guide](docs/node-sdk.md), [file format and Go API](doc/FORMAT-legacy.md),
 [contributing](CONTRIBUTING.md) and [security](SECURITY.md). Rizzbase is
