@@ -3,11 +3,11 @@ name: Publish Python package
 on:
   push:
     tags:
-      - "v*"
+      - "python-v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to publish (for example, v1.1.0)
+        description: Existing Python package tag (for example, python-v1.1.0)
         required: true
         type: string
 
@@ -40,7 +40,10 @@ jobs:
           from pathlib import Path
 
           tag = os.environ["RELEASE_TAG"]
-          version = tag.removeprefix("v")
+            prefix = "python-v"
+            if not tag.startswith(prefix):
+              raise SystemExit(f"Python release tag must start with {prefix}: {tag}")
+            version = tag.removeprefix(prefix)
           if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
               raise SystemExit(f"Invalid release tag: {tag}")
           with Path("python/pyproject.toml").open("rb") as config_file:
