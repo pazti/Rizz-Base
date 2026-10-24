@@ -51,6 +51,28 @@ lobby and Yap CRUD, and query filtering/ordering. Failures raise
 versions `>=1.1.0 <2.0.0` and project format `1`; it checks compatibility once
 per resolved binary path.
 
+`Rizzbase(..., retry={...})` optionally configures `max_attempts` (default 3),
+`base_delay_ms` (75), `max_delay_ms` (1000), `total_budget_ms` (2000), and
+`lock_wait_ms` (1000); time budgets must be less than `timeout_s`. Only
+read-only calls retry `ENGINE_TIMEOUT` with full-jitter exponential backoff.
+The retry budget begins after the first timeout and includes subsequent calls
+and delays.
+Writes are never replayed after a timeout; they wait for an existing writer
+only up to `lock_wait_ms`. `db.doctor()` returns non-destructive diagnostics
+and performs full decrypt/validation using the instance passphrase.
+`RizzbaseError.context` carries structured lock owner details for
+`PROJECT_BUSY` when available.
+Cross-instance and cross-process behavior is described in the
+[concurrency contract](../docs/concurrency.md).
+
+`db.create_yaps(lobby_id, [{"id": "...", "data": ...}, ...])` atomically
+creates 1–1000 Yaps in one engine process; duplicate IDs or an existing ID
+reject the full batch. For pagination, `db.query_yap_page(lobby_id, options)`
+returns `{"yaps": [...], "nextCursor": "..."}`. Pass `cursor` in the next
+options or use `.after(cursor).execute_page()` on the query builder. Cursors
+are bound to the project, Lobby, and filter/order options, not page size. Pagination is not a snapshot:
+restart after project writes.
+
 See the [SDK overview](https://github.com/pazti/Rizz-Base/blob/main/docs/sdks.md),
 [conformance fixtures](https://github.com/pazti/Rizz-Base/blob/main/conformance/README.md),
 and [runnable Node examples](https://github.com/pazti/Rizz-Base/blob/main/examples/README.md).

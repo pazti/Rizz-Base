@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"rizzbase/engine/core"
 	rizzcrypto "rizzbase/engine/crypto"
@@ -18,6 +19,10 @@ var version = "dev"
 
 const projectFormatVersion = 1
 
+func init() {
+	storage.EngineVersion = version
+}
+
 type request struct {
 	Operation  string            `json:"operation"`
 	Path       string            `json:"path"`
@@ -26,20 +31,25 @@ type request struct {
 	YapID      string            `json:"yapId,omitempty"`
 	Name       string            `json:"name,omitempty"`
 	Data       json.RawMessage   `json:"data,omitempty"`
+	Yaps       []core.YapInput   `json:"yaps,omitempty"`
 	Passphrase string            `json:"passphrase"`
+	LockWaitMs int               `json:"lockWaitMs,omitempty"`
 	Query      core.QueryOptions `json:"query,omitempty"`
 }
 
 type response struct {
-	OK        bool            `json:"ok"`
-	Project   *core.Project   `json:"project,omitempty"`
-	Lobby     *core.Lobby     `json:"lobby,omitempty"`
-	Lobbies   []core.Lobby    `json:"lobbies,omitempty"`
-	Yap       *core.Yap       `json:"yap,omitempty"`
-	Yaps      []core.Yap      `json:"yaps,omitempty"`
-	Data      json.RawMessage `json:"data,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	ErrorCode string          `json:"errorCode,omitempty"`
+	OK           bool                 `json:"ok"`
+	Project      *core.Project        `json:"project,omitempty"`
+	Lobby        *core.Lobby          `json:"lobby,omitempty"`
+	Lobbies      []core.Lobby         `json:"lobbies,omitempty"`
+	Yap          *core.Yap            `json:"yap,omitempty"`
+	Yaps         []core.Yap           `json:"yaps,omitempty"`
+	Page         *core.QueryPage      `json:"page,omitempty"`
+	Data         json.RawMessage      `json:"data,omitempty"`
+	Doctor       *storage.Diagnostics `json:"doctor,omitempty"`
+	Error        string               `json:"error,omitempty"`
+	ErrorCode    string               `json:"errorCode,omitempty"`
+	ErrorContext *storage.LockInfo    `json:"errorContext,omitempty"`
 }
 
 func run(input io.Reader, output io.Writer) error {
@@ -64,10 +74,13 @@ func run(input io.Reader, output io.Writer) error {
 	}
 	for field := range fields {
 		switch field {
-		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "passphrase", "query":
+		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query":
 		default:
 			return errors.New("unknown request field")
 		}
+	}
+	if req.LockWaitMs < 0 || req.LockWaitMs > 60_000 {
+		return errors.New("lockWaitMs must be between 0 and 60000")
 	}
 	res := response{OK: true}
 	switch req.Operation {
@@ -77,38 +90,48 @@ func run(input io.Reader, output io.Writer) error {
 		res.Project, err = core.OpenProject(req.Path, req.Passphrase)
 	case "project.import":
 		res.Project, err = core.ImportProject(req.Path, req.Passphrase, req.BackupPath)
+	case "doctor":
+		diagnostics := core.Diagnose(req.Path, req.Passphrase)
+		res.Doctor = &diagnostics
 	case "lobby.create":
 		var lobby core.Lobby
-		lobby, err = core.CreateLobby(req.Path, req.Passphrase, req.Name)
+		lobby, err = core.CreateLobby(req.Path, req.Passphrase, req.Name, time.Duration(req.LockWaitMs)*time.Millisecond)
 		res.Lobby = &lobby
 	case "lobby.list":
 		res.Lobbies, err = core.ListLobbies(req.Path, req.Passphrase)
 	case "lobby.delete":
-		err = core.DeleteLobby(req.Path, req.Passphrase, req.LobbyID)
+		err = core.DeleteLobby(req.Path, req.Passphrase, req.LobbyID, time.Duration(req.LockWaitMs)*time.Millisecond)
 	case "yap.create":
 		if len(req.Data) == 0 || !json.Valid(req.Data) {
 			return errors.New("yap.create requires valid JSON data")
 		}
-		err = core.CreateYap(req.Path, req.Passphrase, req.LobbyID, req.YapID, req.Data)
+		err = core.CreateYap(req.Path, req.Passphrase, req.LobbyID, req.YapID, req.Data, time.Duration(req.LockWaitMs)*time.Millisecond)
 		if err == nil {
 			res.Yap = &core.Yap{ID: req.YapID, Data: req.Data}
 		}
+	case "yap.bulkCreate":
+		res.Yaps, err = core.CreateYaps(req.Path, req.Passphrase, req.LobbyID, req.Yaps, time.Duration(req.LockWaitMs)*time.Millisecond)
 	case "yap.get":
 		res.Data, err = core.GetYap(req.Path, req.Passphrase, req.LobbyID, req.YapID)
 	case "yap.list":
 		res.Yaps, err = core.ListYaps(req.Path, req.Passphrase, req.LobbyID)
 	case "yap.query":
-		res.Yaps, err = core.QueryYaps(req.Path, req.Passphrase, req.LobbyID, req.Query)
+		var page core.QueryPage
+		page, err = core.QueryYapPage(req.Path, req.Passphrase, req.LobbyID, req.Query)
+		if err == nil {
+			res.Yaps = page.Yaps
+			res.Page = &page
+		}
 	case "yap.update":
 		if len(req.Data) == 0 || !json.Valid(req.Data) {
 			return errors.New("yap.update requires valid JSON data")
 		}
-		err = core.UpdateYap(req.Path, req.Passphrase, req.LobbyID, req.YapID, req.Data)
+		err = core.UpdateYap(req.Path, req.Passphrase, req.LobbyID, req.YapID, req.Data, time.Duration(req.LockWaitMs)*time.Millisecond)
 		if err == nil {
 			res.Yap = &core.Yap{ID: req.YapID, Data: req.Data}
 		}
 	case "yap.delete":
-		err = core.DeleteYap(req.Path, req.Passphrase, req.LobbyID, req.YapID)
+		err = core.DeleteYap(req.Path, req.Passphrase, req.LobbyID, req.YapID, time.Duration(req.LockWaitMs)*time.Millisecond)
 	default:
 		return errors.New("unsupported engine operation")
 	}
@@ -143,7 +166,12 @@ func runCommand(args []string, input io.Reader, output, errorOutput io.Writer) i
 		return 2
 	}
 	if err := run(input, output); err != nil {
-		_ = json.NewEncoder(output).Encode(response{OK: false, Error: err.Error(), ErrorCode: errorCode(err)})
+		res := response{OK: false, Error: err.Error(), ErrorCode: errorCode(err)}
+		var busy *storage.BusyError
+		if errors.As(err, &busy) {
+			res.ErrorContext = &busy.Lock
+		}
+		_ = json.NewEncoder(output).Encode(res)
 		return 1
 	}
 	return 0
@@ -157,6 +185,8 @@ func errorCode(err error) string {
 		return "INVALID_FORMAT"
 	case errors.Is(err, storage.ErrBusy):
 		return "PROJECT_BUSY"
+	case errors.Is(err, core.ErrInvalidCursor):
+		return "INVALID_ARGUMENT"
 	case errors.Is(err, core.ErrLobbyNotFound):
 		return "LOBBY_NOT_FOUND"
 	case errors.Is(err, core.ErrYapNotFound):

@@ -37,12 +37,20 @@ type Yap struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type YapInput struct {
+	ID   string          `json:"id"`
+	Data json.RawMessage `json:"data"`
+}
+
+const MaxBulkYaps = 1000
+
 var (
 	ErrLobbyNotFound = errors.New("Lobby not found.")
 	ErrLobbyExists   = errors.New("Lobby already exists.")
 	ErrYapNotFound   = errors.New("Yap not found.")
 	ErrYapExists     = errors.New("Yap already exists.")
 	ErrInvalidBackup = errors.New("Invalid JSON project backup.")
+	ErrYapBatchEmpty = errors.New("Yap batch must contain at least one item.")
 )
 
 // ImportProject validates a decrypted JSON backup and creates a new encrypted
@@ -109,7 +117,7 @@ func OpenProject(path, passphrase string) (*Project, error) {
 	return decodeProject(data)
 }
 
-func CreateLobby(path, passphrase, name string) (Lobby, error) {
+func CreateLobby(path, passphrase, name string, lockWait ...time.Duration) (Lobby, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 256 {
 		return Lobby{}, errors.New("lobby name must be between 1 and 256 bytes")
@@ -123,7 +131,7 @@ func CreateLobby(path, passphrase, name string) (Lobby, error) {
 		created = Lobby{ID: id, Name: name, CreatedAt: time.Now().UTC(), Yaps: map[string]json.RawMessage{}}
 		project.Lobbies[id] = created
 		return nil
-	})
+	}, lockWait...)
 	return created, err
 }
 
@@ -140,7 +148,7 @@ func ListLobbies(path, passphrase string) ([]Lobby, error) {
 	return lobbies, nil
 }
 
-func DeleteLobby(path, passphrase, lobbyID string) error {
+func DeleteLobby(path, passphrase, lobbyID string, lockWait ...time.Duration) error {
 	if !validID(lobbyID) {
 		return errors.New("invalid lobby ID")
 	}
@@ -150,10 +158,10 @@ func DeleteLobby(path, passphrase, lobbyID string) error {
 		}
 		delete(project.Lobbies, lobbyID)
 		return nil
-	})
+	}, lockWait...)
 }
 
-func CreateYap(path, passphrase, lobbyID, yapID string, value any) error {
+func CreateYap(path, passphrase, lobbyID, yapID string, value any, lockWait ...time.Duration) error {
 	if !validID(lobbyID) || !validID(yapID) {
 		return errors.New("lobby and yap IDs must be between 1 and 128 bytes")
 	}
@@ -172,7 +180,55 @@ func CreateYap(path, passphrase, lobbyID, yapID string, value any) error {
 		lobby.Yaps[yapID] = json.RawMessage(data)
 		project.Lobbies[lobbyID] = lobby
 		return nil
-	})
+	}, lockWait...)
+}
+
+func CreateYaps(path, passphrase, lobbyID string, yaps []YapInput, lockWait ...time.Duration) ([]Yap, error) {
+	if !validID(lobbyID) {
+		return nil, errors.New("invalid lobby ID")
+	}
+	if len(yaps) == 0 {
+		return nil, ErrYapBatchEmpty
+	}
+	if len(yaps) > MaxBulkYaps {
+		return nil, fmt.Errorf("a Yap batch cannot exceed %d items", MaxBulkYaps)
+	}
+	seen := make(map[string]struct{}, len(yaps))
+	for _, yap := range yaps {
+		if !validID(yap.ID) {
+			return nil, errors.New("yap IDs must be between 1 and 128 bytes")
+		}
+		if !json.Valid(yap.Data) {
+			return nil, errors.New("each batch Yap requires valid JSON data")
+		}
+		if _, exists := seen[yap.ID]; exists {
+			return nil, ErrYapExists
+		}
+		seen[yap.ID] = struct{}{}
+	}
+
+	created := make([]Yap, len(yaps))
+	err := modifyProject(path, passphrase, func(project *Project) error {
+		lobby, exists := project.Lobbies[lobbyID]
+		if !exists {
+			return ErrLobbyNotFound
+		}
+		for _, yap := range yaps {
+			if _, exists := lobby.Yaps[yap.ID]; exists {
+				return ErrYapExists
+			}
+		}
+		for i, yap := range yaps {
+			lobby.Yaps[yap.ID] = append(json.RawMessage(nil), yap.Data...)
+			created[i] = Yap{ID: yap.ID, Data: append(json.RawMessage(nil), yap.Data...)}
+		}
+		project.Lobbies[lobbyID] = lobby
+		return nil
+	}, lockWait...)
+	if err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 func GetYap(path, passphrase, lobbyID, yapID string) (json.RawMessage, error) {
@@ -200,7 +256,7 @@ func ListYaps(path, passphrase, lobbyID string) ([]Yap, error) {
 	return yaps, nil
 }
 
-func UpdateYap(path, passphrase, lobbyID, yapID string, value any) error {
+func UpdateYap(path, passphrase, lobbyID, yapID string, value any, lockWait ...time.Duration) error {
 	if !validID(lobbyID) || !validID(yapID) {
 		return errors.New("lobby and yap IDs must be between 1 and 128 bytes")
 	}
@@ -219,10 +275,10 @@ func UpdateYap(path, passphrase, lobbyID, yapID string, value any) error {
 		lobby.Yaps[yapID] = json.RawMessage(data)
 		project.Lobbies[lobbyID] = lobby
 		return nil
-	})
+	}, lockWait...)
 }
 
-func DeleteYap(path, passphrase, lobbyID, yapID string) error {
+func DeleteYap(path, passphrase, lobbyID, yapID string, lockWait ...time.Duration) error {
 	if !validID(lobbyID) || !validID(yapID) {
 		return errors.New("lobby and yap IDs must be between 1 and 128 bytes")
 	}
@@ -237,7 +293,7 @@ func DeleteYap(path, passphrase, lobbyID, yapID string) error {
 		delete(lobby.Yaps, yapID)
 		project.Lobbies[lobbyID] = lobby
 		return nil
-	})
+	}, lockWait...)
 }
 
 func getLobby(path, passphrase, lobbyID string) (Lobby, error) {
@@ -255,7 +311,7 @@ func getLobby(path, passphrase, lobbyID string) (Lobby, error) {
 	return lobby, nil
 }
 
-func modifyProject(path, passphrase string, change func(*Project) error) error {
+func modifyProject(path, passphrase string, change func(*Project) error, lockWait ...time.Duration) error {
 	return storage.Modify(path, passphrase, func(data []byte) ([]byte, error) {
 		project, err := decodeProject(data)
 		if err != nil {
@@ -265,7 +321,32 @@ func modifyProject(path, passphrase string, change func(*Project) error) error {
 			return nil, err
 		}
 		return json.Marshal(project)
-	})
+	}, lockWait...)
+}
+
+func Diagnose(path, passphrase string) storage.Diagnostics {
+	report := storage.Diagnose(path)
+	if passphrase == "" || !report.Exists || !report.Regular || !report.Readable || !report.FormatCompatible {
+		return report
+	}
+	valid := false
+	plaintext, err := storage.Read(path, passphrase)
+	if err != nil {
+		report.ProjectCheckReason = err.Error()
+	} else {
+		defer clear(plaintext)
+		_, err = decodeProject(plaintext)
+		if err != nil {
+			report.ProjectCheckReason = err.Error()
+		} else {
+			valid = true
+		}
+	}
+	report.ProjectValid = &valid
+	if !valid {
+		report.Problems = append(report.Problems, "project could not be decrypted and validated")
+	}
+	return report
 }
 
 func decodeProject(data []byte) (*Project, error) {

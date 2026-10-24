@@ -64,6 +64,8 @@ def get_path(value, path):
 def normalize(value, generated_ids, directory, key=""):
     if key == "createdAt":
         return "<timestamp>"
+    if key == "nextCursor" and isinstance(value, str) and value:
+        return "<cursor>"
     if isinstance(value, str):
         if value in generated_ids:
             return "<generated-id>"
@@ -154,12 +156,16 @@ def run_fixture(fixture_path):
                     result = {}
                 elif operation == "yap.create":
                     result = {"yap": database.create_yap(args["lobbyId"], args["yapId"], args["data"])}
+                elif operation == "yap.bulkCreate":
+                    result = {"yaps": database.create_yaps(args["lobbyId"], args["yaps"])}
                 elif operation == "yap.get":
                     result = {"data": database.get_yap(args["lobbyId"], args["yapId"])}
                 elif operation == "yap.list":
                     result = {"yaps": database.list_yaps(args["lobbyId"])}
                 elif operation == "yap.query":
                     result = {"yaps": database.query_yaps(args["lobbyId"], args.get("query"))}
+                elif operation == "yap.queryPage":
+                    result = {"page": database.query_yap_page(args["lobbyId"], args.get("query"))}
                 elif operation == "yap.update":
                     result = {"yap": database.update_yap(args["lobbyId"], args["yapId"], args["data"])}
                 elif operation == "yap.delete":

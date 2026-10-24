@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -112,6 +113,29 @@ func TestQueryYaps(t *testing.T) {
 	})
 	if err != nil || len(result) != 1 || result[0].ID != "c" {
 		t.Fatalf("ordered filter+limit = %v, %v", result, err)
+	}
+	page, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{Limit: &one})
+	if err != nil || len(page.Yaps) != 1 || page.Yaps[0].ID != "a" || page.NextCursor == "" {
+		t.Fatalf("first page = %#v, %v", page, err)
+	}
+	pageOptions := QueryOptions{Limit: &one, Cursor: page.NextCursor}
+	page, err = QueryYapPage(path, "test-only", lobby.ID, pageOptions)
+	if err != nil || len(page.Yaps) != 1 || page.Yaps[0].ID != "b" || page.NextCursor == "" {
+		t.Fatalf("second page = %#v, %v", page, err)
+	}
+	if _, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
+		Where: []Filter{{"score", ">", json.RawMessage(`1`)}}, Limit: &one, Cursor: pageOptions.Cursor,
+	}); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("accepted cursor for a different query: %v", err)
+	}
+	if _, err := QueryYapPage(path, "test-only", "different-lobby", pageOptions); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("accepted cursor for a different Lobby: %v", err)
+	}
+	if _, err := QueryYapPage(filepath.Join(t.TempDir(), "different.rizz"), "test-only", lobby.ID, pageOptions); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("accepted cursor for a different project: %v", err)
+	}
+	if _, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{Limit: &one, Cursor: "invalid"}); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("accepted malformed cursor: %v", err)
 	}
 	if _, err := QueryYaps(path, "wrong", lobby.ID, QueryOptions{}); err == nil {
 		t.Fatal("accepted wrong passphrase")

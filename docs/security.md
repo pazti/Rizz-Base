@@ -21,8 +21,10 @@ Rizzbase protects a file on your device. It does not protect you from yourself â
 - One Project is one `.rizz` file, max 64 MiB encoded. Keep secure backups yourself.
 - `export()` writes a decrypted JSON snapshot (whole Project, plain text, 64 MiB cap, owner-only permissions). Treat it as sensitive: store it securely, never commit it, delete it when done. Import validates the full structure first (`INVALID_BACKUP` on bad files); neither side overwrites existing files.
 - Owner-only permissions on Unix. Never check `.rizz` files or passphrases into git.
-- Writes serialize on an adjacent `.lock` directory. A present lock returns `PROJECT_BUSY` instead of overwriting.
-- After a crash, confirm no writer process is alive before manually removing a stale `.lock` directory.
+- Writes serialize on an adjacent `.lock` directory with PID, host, start time, engine version, and a unique token in `lock.json`. A held lock returns `PROJECT_BUSY` with owner details when available.
+- The `doctor` protocol operation checks file structure, format compatibility, lock ownership, temporary files, and permissions without modifying anything. Add a passphrase to decrypt and validate the project content.
+- Lock owner state is `active`, `stale` (dead PID on this host), or `unknown` (remote host, missing/malformed metadata, or inconclusive process check). Diagnostics never remove locks. Confirm a writer cannot still run before manually removing a stale lock; do not treat `unknown` as stale.
+- SDK writes wait up to the configured lock-wait budget for an active lock; stale locks are reported immediately. Writes are not replayed after timeout because the outcome may be ambiguous.
 - New bytes are fully written + synced before atomic rename. The old file survives until publish. Network filesystems without atomic same-directory rename are unsupported.
 
 ## Supply chain

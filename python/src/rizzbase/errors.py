@@ -19,6 +19,7 @@ class ErrorCode:
 
 
 class RizzbaseError(Exception):
-    def __init__(self, message: str, code: str):
+    def __init__(self, message: str, code: str, context=None):
         super().__init__(message)
         self.code = code
+        self.context = context

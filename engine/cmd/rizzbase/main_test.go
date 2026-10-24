@@ -28,6 +28,47 @@ func TestCLI(t *testing.T) {
 	}
 }
 
+func TestDoctorOperation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "doctor.rizz")
+	createRequest, err := json.Marshal(request{Operation: "create", Path: path, Passphrase: "test-only", Name: "doctor"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run(bytes.NewReader(createRequest), &out); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	structuralRequest, err := json.Marshal(request{Operation: "doctor", Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run(bytes.NewReader(structuralRequest), &out); err != nil {
+		t.Fatal(err)
+	}
+	var res response
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatal(err)
+	}
+	if !res.OK || res.Doctor == nil || !res.Doctor.Exists || !res.Doctor.FormatCompatible || res.Doctor.ProjectValid != nil {
+		t.Fatalf("unexpected structural doctor response: %s", out.String())
+	}
+	out.Reset()
+	fullRequest, err := json.Marshal(request{Operation: "doctor", Path: path, Passphrase: "test-only"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run(bytes.NewReader(fullRequest), &out); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatal(err)
+	}
+	if res.Doctor.ProjectValid == nil || !*res.Doctor.ProjectValid {
+		t.Fatalf("expected full project validation: %s", out.String())
+	}
+}
+
 func TestVersionCommand(t *testing.T) {
 	previousVersion := version
 	version = "1.2.3"
@@ -63,6 +104,7 @@ func TestCommandArguments(t *testing.T) {
 func TestBadRequests(t *testing.T) {
 	for _, input := range []string{
 		`{`, `{}`, `null`, `{"operation":"delete"}`, `{"unknown":1}`,
+		`{"operation":"doctor","path":"test.rizz","lockWaitMs":-1}`,
 		`{"operation":"create"} {}`, strings.Repeat("x", (64<<10)+1),
 	} {
 		var out bytes.Buffer

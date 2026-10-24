@@ -74,3 +74,14 @@ func Open(envelope []byte, passphrase string) ([]byte, error) {
 	}
 	return plaintext, nil
 }
+
+func Inspect(envelope []byte) (int, error) {
+	if len(envelope) < headerSize+16 || string(envelope[:4]) != string(magic[:4]) {
+		return 0, ErrFormat
+	}
+	formatVersion := int(envelope[4])
+	if envelope[5] != magic[5] || envelope[6] != magic[6] || envelope[7] != magic[7] {
+		return formatVersion, ErrFormat
+	}
+	return formatVersion, nil
+}

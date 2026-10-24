@@ -15,7 +15,7 @@ rizzbase < request.json
 - `rizzbase --help` prints usage. Other extra argv is an error (exit 2).
 - Reads **one** JSON object from stdin (max 64 KiB), writes **one** JSON object to stdout.
 - One operation per process. Exit 0 on success, 1 on failure.
-- Passphrase goes in the JSON body on stdin. Never as an argument.
+- Passphrase goes in the JSON body on stdin for project operations. It is optional for structural-only `doctor`; never pass it as an argument.
 
 ## Request shape
 
@@ -34,13 +34,14 @@ rizzbase < request.json
 | --- | --- | --- |
 | `operation` | all | See table below |
 | `path` | all | Must end in `.rizz` (SDK rule; engine accepts any path) |
-| `passphrase` | all | Nonempty, private stdin only |
+| `passphrase` | all except `doctor` | Private stdin only; omit on `doctor` for structural checks only |
 | `name` | `create`, `lobby.create` | Project or Lobby display name |
 | `backupPath` | `project.import` | Validated `.json` backup; must differ from `path` |
 | `lobbyId` | `lobby.delete`, all `yap.*` | Generated Lobby ID |
 | `yapId` | `yap.create/get/update/delete` | 1–128 bytes, caller-chosen |
 | `data` | `yap.create`, `yap.update` | Valid JSON value |
 | `query` | `yap.query` | `{ "where": [...], "orderBy": {...}, "limit": n }` |
+| `lockWaitMs` | write operations | Optional bounded wait for the adjacent project lock; 0–60000 ms |
 
 Unknown fields are rejected.
 
@@ -48,6 +49,7 @@ Unknown fields are rejected.
 
 | Operation | Needs | Returns |
 | --- | --- | --- |
+| `doctor` | `path` | `{ ok:true, doctor }` — non-destructive file, format, lock, permission, temp-file, and engine diagnostics; include `passphrase` for full decrypt + project validation |
 | `create` | `name` | `{ ok:true, project }` — never overwrites an existing file |
 | `open` | — | `{ ok:true, project }` — decrypt + metadata |
 | `project.import` | `backupPath` | `{ ok:true, project }` — validate a `.json` backup and encrypt it into a new file; never overwrites |
@@ -55,11 +57,12 @@ Unknown fields are rejected.
 | `lobby.list` | — | `{ ok:true, lobbies }` sorted by ID |
 | `lobby.delete` | `lobbyId` | `{ ok:true }` — deletes contained Yaps too |
 | `yap.create` | `lobbyId`, `yapId`, `data` | `{ ok:true, yap:{id,data} }` — duplicate is an error |
+| `yap.bulkCreate` | `lobbyId`, `yaps` | `{ ok:true, yaps }` — atomically creates 1–1000 items; any duplicate rejects the entire batch |
 | `yap.get` | `lobbyId`, `yapId` | `{ ok:true, data }` |
 | `yap.list` | `lobbyId` | `{ ok:true, yaps }` sorted by Yap ID |
 | `yap.update` | `lobbyId`, `yapId`, `data` | `{ ok:true, yap }` — full replace |
 | `yap.delete` | `lobbyId`, `yapId` | `{ ok:true }` |
-| `yap.query` | `lobbyId`, `query` | `{ ok:true, yaps }` filtered, ordered, then limited |
+| `yap.query` | `lobbyId`, `query` | `{ ok:true, yaps, page:{ yaps, nextCursor } }` filtered, ordered, cursor-resumed, then limited |
 
 Failure shape:
 
@@ -67,7 +70,11 @@ Failure shape:
 { "ok": false, "error": "human message", "errorCode": "YAP_NOT_FOUND" }
 ```
 
-Error codes: `AUTHENTICATION_FAILED`, `INVALID_FORMAT`, `PROJECT_BUSY`, `LOBBY_NOT_FOUND`, `YAP_NOT_FOUND`, `YAP_EXISTS`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `PERMISSION_DENIED`, `INVALID_BACKUP`, `ENGINE_ERROR`.
+`PROJECT_BUSY` may also include an `errorContext` object with lock state,
+owner metadata, and age. Error codes: `AUTHENTICATION_FAILED`, `INVALID_FORMAT`,
+`PROJECT_BUSY`, `LOBBY_NOT_FOUND`, `YAP_NOT_FOUND`, `YAP_EXISTS`,
+`FILE_NOT_FOUND`, `FILE_EXISTS`, `PERMISSION_DENIED`, `INVALID_BACKUP`,
+`ENGINE_ERROR`.
 
 ## Examples
 
@@ -106,6 +113,13 @@ Query with two filters, an ordering, and a limit:
 
 Operators: `==`, `!=`, `>`, `>=`, `<`, `<=`. Filters are AND-combined. `field` uses dot-separated paths (`user.active`). Equality compares full JSON values (objects and arrays included). Ordering only compares number-vs-number or string-vs-string. Missing fields never match, including `!=`. `orderBy` direction is `"asc"` (default) or `"desc"`; numbers sort before strings, missing or non-number/string values sort last in either direction, and ties fall back to Yap ID. Filtering, ordering, then limiting happen in that order. The Lobby is scanned in memory; no indexes.
 
+Use `query.cursor` from the previous page's `page.nextCursor` to continue.
+Cursors are opaque, bound to the project, Lobby, and filter/order query, and
+reusable with a different page limit. A cursor is invalid if it is malformed, belongs to
+another query, or its last Yap no longer matches. Pagination is not a
+snapshot; writes between page requests may change later pages. Restart after
+mutations.
+
 ## Backup and restore
 
 There is no `export` operation: exporting is decrypt + write JSON, which SDKs
@@ -122,5 +136,7 @@ plaintext.
 - Request body: 64 KiB. Large single `create`/`update` payloads are rejected.
 - Encoded project file: 64 MiB.
 - IDs: 1–128 bytes.
-- Writes serialize on an adjacent `.lock` directory. A present lock blocks writes with `PROJECT_BUSY`. After a crash, verify no writer is alive before removing it.
+- Writes serialize on an adjacent `.lock` directory containing `lock.json` owner metadata. Without `lockWaitMs`, a held lock immediately returns `PROJECT_BUSY`; with it, the engine waits only up to that bound for an active lock. Stale locks return immediately. The error identifies the PID/host when available.
+- `doctor` reports whether a lock owner is active, stale, or unknown. It never removes a lock; malformed metadata and locks on another host are unknown, not stale. Only consider manual removal after checking the owner and confirming no writer can still run.
 - Writes are atomic rename after full sync; the old file stays intact until publish.
+- The supported engine/project-format matrix and local-only locking scope are documented in the [SDK overview](./sdks.md) and [concurrency contract](./concurrency.md).

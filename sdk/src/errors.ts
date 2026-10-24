@@ -6,7 +6,12 @@ export type ErrorCode =
   | "INVALID_BACKUP" | "EXPORT_FAILED";
 
 export class RizzbaseError extends Error {
-  constructor(message: string, public readonly code: ErrorCode, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    public readonly code: ErrorCode,
+    options?: ErrorOptions,
+    public readonly context?: Record<string, unknown>,
+  ) {
     super(message, options);
     this.name = "RizzbaseError";
   }

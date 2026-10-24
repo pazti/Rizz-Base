@@ -2,10 +2,14 @@ package core
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -22,6 +26,7 @@ type QueryOptions struct {
 	Where   []Filter `json:"where,omitempty"`
 	OrderBy *OrderBy `json:"orderBy,omitempty"`
 	Limit   *int     `json:"limit,omitempty"`
+	Cursor  string   `json:"cursor,omitempty"`
 }
 
 // OrderBy sorts matching Yaps by a JSON number or string field.
@@ -30,58 +35,78 @@ type OrderBy struct {
 	Direction string `json:"direction"`
 }
 
+type QueryPage struct {
+	Yaps       []Yap  `json:"yaps"`
+	NextCursor string `json:"nextCursor"`
+}
+
+var ErrInvalidCursor = errors.New("invalid or expired query cursor")
+
 // QueryYaps filters and sorts a snapshot without changing the file.
 // Missing fields never match, including !=. Ordering comparisons are only
 // defined between two numbers or two strings, with no type coercion. Missing
 // and unsupported values sort last; equal values retain Yap-ID order.
 func QueryYaps(path, passphrase, lobbyID string, options QueryOptions) ([]Yap, error) {
+	page, err := QueryYapPage(path, passphrase, lobbyID, options)
+	return page.Yaps, err
+}
+
+func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (QueryPage, error) {
 	if options.Limit != nil && *options.Limit < 0 {
-		return nil, errors.New("query limit must be non-negative")
+		return QueryPage{}, errors.New("query limit must be non-negative")
 	}
 	if options.OrderBy != nil {
 		if strings.TrimSpace(options.OrderBy.Field) == "" {
-			return nil, errors.New("orderBy field must not be empty")
+			return QueryPage{}, errors.New("orderBy field must not be empty")
 		}
 		for _, part := range strings.Split(options.OrderBy.Field, ".") {
 			if strings.TrimSpace(part) == "" {
-				return nil, errors.New("orderBy field must have non-empty path segments")
+				return QueryPage{}, errors.New("orderBy field must have non-empty path segments")
 			}
 		}
 		if options.OrderBy.Direction != "asc" && options.OrderBy.Direction != "desc" {
-			return nil, errors.New("orderBy direction must be asc or desc")
+			return QueryPage{}, errors.New("orderBy direction must be asc or desc")
 		}
 	}
 	values := make([]any, len(options.Where))
 	for i, filter := range options.Where {
 		for _, part := range strings.Split(filter.Field, ".") {
 			if strings.TrimSpace(part) == "" {
-				return nil, errors.New("query field must have non-empty path segments")
+				return QueryPage{}, errors.New("query field must have non-empty path segments")
 			}
 		}
 		switch filter.Operator {
 		case "==", "!=", ">", ">=", "<", "<=":
 		default:
-			return nil, fmt.Errorf("invalid query operator %q; use ==, !=, >, >=, <, or <=", filter.Operator)
+			return QueryPage{}, fmt.Errorf("invalid query operator %q; use ==, !=, >, >=, <, or <=", filter.Operator)
 		}
 		value, err := decodeValue(filter.Value)
 		if err != nil {
-			return nil, errors.New("query filter requires valid JSON value")
+			return QueryPage{}, errors.New("query filter requires valid JSON value")
 		}
 		values[i] = value
 	}
+	var cursor queryCursor
+	if options.Cursor != "" {
+		var err error
+		cursor, err = decodeCursor(options.Cursor, path, lobbyID, options)
+		if err != nil {
+			return QueryPage{}, err
+		}
+	}
 	yaps, err := ListYaps(path, passphrase, lobbyID)
 	if err != nil {
-		return nil, err
+		return QueryPage{}, err
 	}
 	result := make([]Yap, 0)
 	orderValues := make(map[string]orderedValue)
 	for _, yap := range yaps {
-		if options.OrderBy == nil && options.Limit != nil && len(result) >= *options.Limit {
+		if options.Cursor == "" && options.OrderBy == nil && options.Limit != nil && len(result) > *options.Limit {
 			break
 		}
 		document, err := decodeValue(yap.Data)
 		if err != nil {
-			return nil, err
+			return QueryPage{}, err
 		}
 		matches := true
 		for i, filter := range options.Where {
@@ -124,10 +149,88 @@ func QueryYaps(path, passphrase, lobbyID string, options QueryOptions) ([]Yap, e
 			return comparison < 0
 		})
 	}
-	if options.Limit != nil && len(result) > *options.Limit {
-		result = result[:*options.Limit]
+	if options.Cursor != "" {
+		cursorIndex := -1
+		for i := range result {
+			if result[i].ID == cursor.ID {
+				cursorIndex = i
+				break
+			}
+		}
+		if cursorIndex < 0 {
+			return QueryPage{}, ErrInvalidCursor
+		}
+		result = result[cursorIndex+1:]
 	}
-	return result, nil
+	page := QueryPage{Yaps: result, NextCursor: ""}
+	if options.Limit != nil && len(result) > *options.Limit {
+		page.Yaps = result[:*options.Limit]
+		if *options.Limit > 0 {
+			page.NextCursor, err = encodeCursor(page.Yaps[len(page.Yaps)-1].ID, path, lobbyID, options)
+			if err != nil {
+				return QueryPage{}, err
+			}
+		}
+	} else if options.Limit != nil {
+		page.Yaps = result
+	}
+	return page, nil
+}
+
+type queryCursor struct {
+	Version   int    `json:"v"`
+	QueryHash string `json:"q"`
+	ID        string `json:"id"`
+}
+
+func encodeCursor(id, path, lobbyID string, options QueryOptions) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	query, err := json.Marshal(struct {
+		Version int      `json:"version"`
+		Path    string   `json:"path"`
+		LobbyID string   `json:"lobbyId"`
+		Where   []Filter `json:"where,omitempty"`
+		OrderBy *OrderBy `json:"orderBy,omitempty"`
+	}{Version: 1, Path: filepath.Clean(absolutePath), LobbyID: lobbyID, Where: options.Where, OrderBy: options.OrderBy})
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(query)
+	token, err := json.Marshal(queryCursor{Version: 1, QueryHash: hex.EncodeToString(hash[:]), ID: id})
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(token), nil
+}
+
+func decodeCursor(token, path, lobbyID string, options QueryOptions) (queryCursor, error) {
+	if len(token) > 4096 {
+		return queryCursor{}, ErrInvalidCursor
+	}
+	data, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return queryCursor{}, ErrInvalidCursor
+	}
+	var cursor queryCursor
+	if err := json.Unmarshal(data, &cursor); err != nil || cursor.Version != 1 || cursor.ID == "" || cursor.QueryHash == "" {
+		return queryCursor{}, ErrInvalidCursor
+	}
+	expected, err := encodeCursor(cursor.ID, path, lobbyID, options)
+	if err != nil {
+		return queryCursor{}, err
+	}
+	expectedData, err := base64.RawURLEncoding.DecodeString(expected)
+	if err != nil {
+		return queryCursor{}, err
+	}
+	var expectedCursor queryCursor
+	if err := json.Unmarshal(expectedData, &expectedCursor); err != nil || cursor.QueryHash != expectedCursor.QueryHash {
+		return queryCursor{}, ErrInvalidCursor
+	}
+	return cursor, nil
 }
 
 type orderedValue struct {

@@ -39,3 +39,6 @@ CI runs both runners and compares their normalized results. Add scenario
 coverage by extending fixtures rather than duplicating expectations in
 language-specific tests. Keep fixture inputs offline and avoid assertions on
 timestamps, generated IDs, and machine-specific file paths.
+
+The query fixture covers atomic `yap.bulkCreate` and `yap.query` cursor
+continuation, ensuring both SDKs share the batch and page response shapes.

@@ -35,6 +35,7 @@ function getPath(value, path) {
 
 function normalize(value, generatedIds, directory, key = "") {
   if (key === "createdAt") return "<timestamp>";
+  if (key === "nextCursor" && typeof value === "string" && value) return "<cursor>";
   if (typeof value === "string") {
     if (generatedIds.includes(value)) return "<generated-id>";
     return value.replaceAll(directory, "<temporary-directory>");
@@ -130,6 +131,9 @@ async function runFixture(fixturePath) {
           case "yap.create":
             result = { yap: await db.createYap(args.lobbyId, args.yapId, args.data) };
             break;
+          case "yap.bulkCreate":
+            result = { yaps: await db.createYaps(args.lobbyId, args.yaps) };
+            break;
           case "yap.get":
             result = { data: await db.getYap(args.lobbyId, args.yapId) };
             break;
@@ -138,6 +142,9 @@ async function runFixture(fixturePath) {
             break;
           case "yap.query":
             result = { yaps: await db.queryYaps(args.lobbyId, args.query) };
+            break;
+          case "yap.queryPage":
+            result = { page: await db.queryYapPage(args.lobbyId, args.query) };
             break;
           case "yap.update":
             result = { yap: await db.updateYap(args.lobbyId, args.yapId, args.data) };
@@ -172,7 +179,7 @@ async function runFixture(fixturePath) {
         ? { ok: false, errorCode: error.code }
         : { ok: true, ...result };
       if (!error && step.operation === "lobby.list" && !("lobbies" in normalizedResult)) normalizedResult.lobbies = [];
-      if (!error && ["yap.list", "yap.query"].includes(step.operation) && !("yaps" in normalizedResult)) normalizedResult.yaps = [];
+      if (!error && ["yap.list", "yap.query", "yap.bulkCreate"].includes(step.operation) && !("yaps" in normalizedResult)) normalizedResult.yaps = [];
       normalizedSteps.push({
         step: step.id,
         result: normalize(normalizedResult, generatedIds, directory),
