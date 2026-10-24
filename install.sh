@@ -1,12 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${RIZZBASE_VERSION:-1.1.0}"
+release_api_base="${RIZZBASE_RELEASE_API_URL:-https://api.github.com/repos/pazti/Rizz-Base}"
+version="${RIZZBASE_VERSION:-latest}"
 install_dir="${RIZZBASE_INSTALL_DIR:-$HOME/.rizzbase/bin}"
 release_base="${RIZZBASE_RELEASE_BASE_URL:-https://github.com/pazti/Rizz-Base/releases/download}"
 
+if [[ "$version" == "latest" ]]; then
+  latest_response="$(curl --fail --location --silent --show-error "$release_api_base/releases/latest")" || {
+    echo "Could not determine the latest Rizzbase release." >&2
+    exit 1
+  }
+  version="$(printf '%s' "$latest_response" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+  if [[ -z "$version" ]]; then
+    echo "Could not parse the latest Rizzbase release tag." >&2
+    exit 1
+  fi
+fi
+version="${version#v}"
+
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "RIZZBASE_VERSION must be a version like 1.1.0." >&2
+  echo "RIZZBASE_VERSION must be a stable version like 1.1.0." >&2
   exit 1
 fi
 

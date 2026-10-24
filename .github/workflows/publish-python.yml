@@ -1,0 +1,58 @@
+name: Publish Python package
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish (for example, v1.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/rizzbase/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate release version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          tag = os.environ["RELEASE_TAG"]
+          version = tag.removeprefix("v")
+          if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
+              raise SystemExit(f"Invalid release tag: {tag}")
+          with Path("python/pyproject.toml").open("rb") as config_file:
+              package_version = tomllib.load(config_file)["project"]["version"]
+          if package_version != version:
+              raise SystemExit(
+                  f"Release tag {tag} does not match Python package version {package_version}"
+              )
+          PY
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade build
+          python -m build --sdist --wheel --outdir dist ./python
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

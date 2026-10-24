@@ -2,9 +2,19 @@
 param()
 
 $ErrorActionPreference = "Stop"
-$Version = if ($env:RIZZBASE_VERSION) { $env:RIZZBASE_VERSION } else { "1.1.0" }
+$ReleaseApiBase = if ($env:RIZZBASE_RELEASE_API_URL) { $env:RIZZBASE_RELEASE_API_URL.TrimEnd("/") } else { "https://api.github.com/repos/pazti/Rizz-Base" }
+$Version = if ($env:RIZZBASE_VERSION) { $env:RIZZBASE_VERSION } else { "latest" }
 $InstallDir = if ($env:RIZZBASE_INSTALL_DIR) { $env:RIZZBASE_INSTALL_DIR } else { Join-Path $HOME ".rizzbase\bin" }
 $ReleaseBase = if ($env:RIZZBASE_RELEASE_BASE_URL) { $env:RIZZBASE_RELEASE_BASE_URL.TrimEnd("/") } else { "https://github.com/pazti/Rizz-Base/releases/download" }
+
+if ($Version -eq "latest") {
+  $Latest = Invoke-RestMethod -Uri "$ReleaseApiBase/releases/latest" -Headers @{ Accept = "application/vnd.github+json" }
+  if (-not $Latest.tag_name) { throw "Could not determine the latest Rizzbase release." }
+  $Version = $Latest.tag_name.TrimStart("v")
+}
+elseif ($Version.StartsWith("v")) {
+  $Version = $Version.Substring(1)
+}
 
 if ($Version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
   throw "RIZZBASE_VERSION must be a stable version like 1.1.0."

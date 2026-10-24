@@ -66,10 +66,10 @@ The Node SDK requires Node.js 20 or newer and the separately installed engine.
 Python is optional; its SDK requires Python 3.10 or newer. Each SDK checks
 engine and project-format compatibility before its first request.
 
-For Python, install Python 3.10 or newer, then install the SDK from a checkout:
+For Python, install Python 3.10 or newer, then install the SDK from PyPI:
 
 ```sh
-python -m pip install ./python
+python -m pip install rizzbase
 ```
 
 See [engine installation](docs/installation.md) for version pinning, manual
@@ -80,7 +80,7 @@ each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, then both check
 ### Supported languages
 
 - **Node.js / TypeScript** — Node.js 20+, install with `npm install rizzbase`.
-- **Python** — Python 3.10+, install with `python -m pip install ./python`.
+- **Python** — Python 3.10+, install with `python -m pip install rizzbase`.
 
 The SDKs never download the engine automatically; provide it using the
 constructor option, `RIZZBASE_BINARY`, or `PATH`. See the [Node.js guide](docs/node-sdk.md),

@@ -46,10 +46,11 @@ check the version.
 
 ## Pinning a version or changing the install directory
 
-The installers default to release `1.1.0` and `~/.rizzbase/bin`. Set
-`RIZZBASE_VERSION` and/or `RIZZBASE_INSTALL_DIR` before running the installer
-to choose another version or destination. Set
-`RIZZBASE_RELEASE_BASE_URL` only when using a compatible release mirror.
+The installers default to the latest published release and install into
+`~/.rizzbase/bin`. Set `RIZZBASE_VERSION` and/or `RIZZBASE_INSTALL_DIR`
+before running the installer to choose another version or destination. Set
+`RIZZBASE_RELEASE_BASE_URL` and `RIZZBASE_RELEASE_API_URL` only when using a
+compatible release mirror or a custom API endpoint.
 
 Both SDKs support engine versions `>=1.1.0 <2.0.0` and project format `1`.
 Engine and SDK release versions do not need to match. `rizzbase --version`

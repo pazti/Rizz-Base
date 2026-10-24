@@ -8,10 +8,10 @@ separately first; the SDK never downloads or installs it automatically.**
 Install the engine using the Linux/macOS or Windows PowerShell installer, or a
 verified release binary, following the
 [engine installation guide](https://github.com/pazti/Rizz-Base/blob/main/docs/installation.md).
-Then, from the repository root, install the Python package:
+Then install the Python package from PyPI:
 
 ```sh
-python -m pip install ./python
+python -m pip install rizzbase
 ```
 
 The engine must be on `PATH` or configured through `RIZZBASE_BINARY`. The
