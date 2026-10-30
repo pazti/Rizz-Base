@@ -43,5 +43,6 @@ create their Projects on first run and reopen them on later runs. They do not
 overwrite existing Project files.
 
 The SDK also supports `db.export("./backup.json")` and
-`db.importBackup("./backup.json")`. Exported JSON is decrypted plaintext and
-must be protected.
+`db.importBackup("./backup.json")`. Projects and JSON backups are limited to
+64 MiB. Exported JSON is decrypted plaintext and must be protected; export and
+import refuse to overwrite existing files. Import into a new `.rizz` path.

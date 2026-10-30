@@ -123,6 +123,16 @@ func TestQueryYaps(t *testing.T) {
 	if err != nil || len(page.Yaps) != 1 || page.Yaps[0].ID != "b" || page.NextCursor == "" {
 		t.Fatalf("second page = %#v, %v", page, err)
 	}
+	orderedOptions := QueryOptions{OrderBy: &OrderBy{Field: "score", Direction: "asc"}, Limit: &one}
+	orderedPage, err := QueryYapPage(path, "test-only", lobby.ID, orderedOptions)
+	if err != nil || len(orderedPage.Yaps) != 1 || orderedPage.Yaps[0].ID != "a" || orderedPage.NextCursor == "" {
+		t.Fatalf("first ordered page = %#v, %v", orderedPage, err)
+	}
+	orderedOptions.Cursor = orderedPage.NextCursor
+	orderedPage, err = QueryYapPage(path, "test-only", lobby.ID, orderedOptions)
+	if err != nil || len(orderedPage.Yaps) != 1 || orderedPage.Yaps[0].ID != "e" {
+		t.Fatalf("second ordered page = %#v, %v", orderedPage, err)
+	}
 	if _, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
 		Where: []Filter{{"score", ">", json.RawMessage(`1`)}}, Limit: &one, Cursor: pageOptions.Cursor,
 	}); !errors.Is(err, ErrInvalidCursor) {
@@ -142,5 +152,32 @@ func TestQueryYaps(t *testing.T) {
 	}
 	if _, err := QueryYaps(path, "test-only", "missing", QueryOptions{}); err != ErrLobbyNotFound {
 		t.Fatal(err)
+	}
+}
+
+func TestQueryOrdersLargeNumbersExactly(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "large-numbers.rizz")
+	if _, err := CreateProject(path, "query", "test-only"); err != nil {
+		t.Fatal(err)
+	}
+	lobby, err := CreateLobby(path, "test-only", "general")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = CreateYaps(path, "test-only", lobby.ID, []YapInput{
+		{ID: "larger", Data: json.RawMessage(`{"score":9007199254740993}`)},
+		{ID: "smaller", Data: json.RawMessage(`{"score":9007199254740992}`)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
+		OrderBy: &OrderBy{Field: "score", Direction: "asc"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Yaps) != 2 || page.Yaps[0].ID != "smaller" || page.Yaps[1].ID != "larger" {
+		t.Fatalf("large-number order = %#v", page.Yaps)
 	}
 }

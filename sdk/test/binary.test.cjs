@@ -93,3 +93,23 @@ test("checks each resolved binary once and verifies its version output", async t
   const { readFile } = require("node:fs/promises");
   assert.equal((await readFile(calls, "utf8")).trim().split("\n").length, 1);
 });
+
+test("incompatible engine output produces a safe actionable error", async t => {
+  if (process.platform === "win32") return t.skip("fixture uses POSIX executable scripts");
+  const directory = await mkdtemp(join(tmpdir(), "rizz-version-error-"));
+  directories.push(directory);
+  for (const [name, script] of [
+    ["malformed", "#!/bin/sh\nprintf '%s\\n' 'private engine output' >&2\nprintf '%s\\n' 'not-json'\n"],
+    ["failure", "#!/bin/sh\nprintf '%s\\n' 'private engine output' >&2\nexit 9\n"],
+  ]) {
+    const binary = join(directory, name);
+    await writeFile(binary, script);
+    await chmod(binary, 0o755);
+    await assert.rejects(
+      ensureCompatibleEngine(binary),
+      error => error.code === "ENGINE_INCOMPATIBLE"
+        && error.message.includes("check its --version output")
+        && !error.message.includes("private engine output"),
+    );
+  }
+});
