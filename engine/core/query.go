@@ -40,6 +40,11 @@ type QueryPage struct {
 	NextCursor string `json:"nextCursor"`
 }
 
+type queryResult struct {
+	yap   Yap
+	order orderedValue
+}
+
 var ErrInvalidCursor = errors.New("invalid or expired query cursor")
 
 // QueryYaps filters and sorts a snapshot without changing the file.
@@ -98,8 +103,9 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 	if err != nil {
 		return QueryPage{}, err
 	}
+	orderBy := options.OrderBy
 	result := make([]Yap, 0)
-	orderValues := make(map[string]orderedValue)
+	orderedResults := make([]queryResult, 0)
 	for _, yap := range yaps {
 		if options.Cursor == "" && options.OrderBy == nil && options.Limit != nil && len(result) > *options.Limit {
 			break
@@ -117,37 +123,25 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 			}
 		}
 		if matches {
-			result = append(result, yap)
-			if options.OrderBy != nil {
-				value, exists := fieldValue(document, options.OrderBy.Field)
-				class, comparable := orderValue(value, exists)
-				orderValues[yap.ID] = orderedValue{class: class, value: comparable}
+			if orderBy == nil {
+				result = append(result, yap)
+			} else {
+				value, exists := fieldValue(document, orderBy.Field)
+				orderedResults = append(orderedResults, queryResult{
+					yap:   yap,
+					order: orderValue(value, exists),
+				})
 			}
 		}
 	}
-	if options.OrderBy != nil {
-		orderBy := options.OrderBy
-		sort.Slice(result, func(i, j int) bool {
-			left := orderValues[result[i].ID]
-			right := orderValues[result[j].ID]
-			if left.class != right.class {
-				return left.class < right.class
-			}
-			if left.class == 2 {
-				return result[i].ID < result[j].ID
-			}
-			comparison := compareOrder(left.value, right.value)
-			if orderBy.Direction == "desc" {
-				if comparison != 0 {
-					return comparison > 0
-				}
-				return result[i].ID < result[j].ID
-			}
-			if comparison == 0 {
-				return result[i].ID < result[j].ID
-			}
-			return comparison < 0
+	if orderBy != nil {
+		sort.Slice(orderedResults, func(i, j int) bool {
+			return queryResultLess(orderedResults[i], orderedResults[j], orderBy)
 		})
+		result = make([]Yap, len(orderedResults))
+		for i, item := range orderedResults {
+			result[i] = item.yap
+		}
 	}
 	if options.Cursor != "" {
 		cursorIndex := -1
@@ -234,22 +228,51 @@ func decodeCursor(token, path, lobbyID string, options QueryOptions) (queryCurso
 }
 
 type orderedValue struct {
-	class int
-	value any
+	class  int
+	value  any
+	number *big.Rat
 }
 
-func orderValue(value any, exists bool) (int, any) {
+func queryResultLess(left, right queryResult, orderBy *OrderBy) bool {
+	if left.order.class != right.order.class {
+		return left.order.class < right.order.class
+	}
+	if left.order.class == 2 {
+		return left.yap.ID < right.yap.ID
+	}
+	comparison := compareOrderedValues(left.order, right.order)
+	if comparison == 0 {
+		return left.yap.ID < right.yap.ID
+	}
+	if orderBy.Direction == "desc" {
+		return comparison > 0
+	}
+	return comparison < 0
+}
+
+func orderValue(value any, exists bool) orderedValue {
 	if !exists {
-		return 2, nil
+		return orderedValue{class: 2}
 	}
-	switch value.(type) {
+	switch typedValue := value.(type) {
 	case json.Number:
-		return 0, value
+		number, ok := new(big.Rat).SetString(string(typedValue))
+		if !ok {
+			return orderedValue{class: 2}
+		}
+		return orderedValue{class: 0, value: typedValue, number: number}
 	case string:
-		return 1, value
+		return orderedValue{class: 1, value: typedValue}
 	default:
-		return 2, nil
+		return orderedValue{class: 2}
 	}
+}
+
+func compareOrderedValues(left, right orderedValue) int {
+	if left.class == 0 && right.class == 0 && left.number != nil && right.number != nil {
+		return left.number.Cmp(right.number)
+	}
+	return compareOrder(left.value, right.value)
 }
 
 func compareOrder(a, b any) int {

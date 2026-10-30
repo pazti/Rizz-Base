@@ -51,6 +51,15 @@ lobby and Yap CRUD, and query filtering/ordering. Failures raise
 versions `>=1.1.0 <2.0.0` and project format `1`; it checks compatibility once
 per resolved binary path.
 
+## Project limits and backups
+
+Encrypted `.rizz` Projects and JSON backups are limited to 64 MiB. Engine
+requests are limited to 64 KiB, so a single large Yap or bulk request can hit
+that limit before the Project file does. Exported JSON backups are decrypted
+plaintext; protect them like the original data. Export and import refuse to
+overwrite existing files. See the [security guide](../docs/security.md) for
+backup handling and storage details.
+
 `Rizzbase(..., retry={...})` optionally configures `max_attempts` (default 3),
 `base_delay_ms` (75), `max_delay_ms` (1000), `total_budget_ms` (2000), and
 `lock_wait_ms` (1000); time budgets must be less than `timeout_s`. Only
