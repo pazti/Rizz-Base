@@ -45,7 +45,7 @@ export async function callEngine(binary: string, request: object, timeoutMs: num
         return reject(new RizzbaseError("Engine returned an invalid response.", "ENGINE_PROTOCOL_ERROR"));
       }
       if (response.ok === false) {
-        const codes: string[] = ["AUTHENTICATION_FAILED", "INVALID_FORMAT", "PROJECT_BUSY", "LOBBY_NOT_FOUND", "YAP_NOT_FOUND", "YAP_EXISTS", "FILE_NOT_FOUND", "FILE_EXISTS", "PERMISSION_DENIED", "INVALID_BACKUP", "ENGINE_ERROR"];
+        const codes: string[] = ["AUTHENTICATION_FAILED", "INVALID_FORMAT", "PROJECT_BUSY", "LOBBY_NOT_FOUND", "YAP_NOT_FOUND", "YAP_EXISTS", "FILE_NOT_FOUND", "FILE_EXISTS", "PERMISSION_DENIED", "INVALID_BACKUP", "INVALID_CURSOR", "ENGINE_ERROR"];
         const code = codes.includes(String(response.errorCode)) ? response.errorCode as ErrorCode : "ENGINE_ERROR";
         return reject(new RizzbaseError(typeof response.error === "string" ? response.error : "Engine operation failed.", code));
       }

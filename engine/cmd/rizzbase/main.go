@@ -31,15 +31,16 @@ type request struct {
 }
 
 type response struct {
-	OK        bool            `json:"ok"`
-	Project   *core.Project   `json:"project,omitempty"`
-	Lobby     *core.Lobby     `json:"lobby,omitempty"`
-	Lobbies   []core.Lobby    `json:"lobbies,omitempty"`
-	Yap       *core.Yap       `json:"yap,omitempty"`
-	Yaps      []core.Yap      `json:"yaps,omitempty"`
-	Data      json.RawMessage `json:"data,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	ErrorCode string          `json:"errorCode,omitempty"`
+	OK         bool            `json:"ok"`
+	Project    *core.Project   `json:"project,omitempty"`
+	Lobby      *core.Lobby     `json:"lobby,omitempty"`
+	Lobbies    []core.Lobby    `json:"lobbies,omitempty"`
+	Yap        *core.Yap       `json:"yap,omitempty"`
+	Yaps       []core.Yap      `json:"yaps,omitempty"`
+	NextCursor string          `json:"nextCursor,omitempty"`
+	Data       json.RawMessage `json:"data,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	ErrorCode  string          `json:"errorCode,omitempty"`
 }
 
 func run(input io.Reader, output io.Writer) error {
@@ -98,7 +99,12 @@ func run(input io.Reader, output io.Writer) error {
 	case "yap.list":
 		res.Yaps, err = core.ListYaps(req.Path, req.Passphrase, req.LobbyID)
 	case "yap.query":
-		res.Yaps, err = core.QueryYaps(req.Path, req.Passphrase, req.LobbyID, req.Query)
+		var page core.QueryPage
+		page, err = core.QueryYapPage(req.Path, req.Passphrase, req.LobbyID, req.Query)
+		if err == nil {
+			res.Yaps = page.Yaps
+			res.NextCursor = page.NextCursor
+		}
 	case "yap.update":
 		if len(req.Data) == 0 || !json.Valid(req.Data) {
 			return errors.New("yap.update requires valid JSON data")
@@ -165,6 +171,8 @@ func errorCode(err error) string {
 		return "INVALID_BACKUP"
 	case errors.Is(err, core.ErrYapExists):
 		return "YAP_EXISTS"
+	case errors.Is(err, core.ErrInvalidCursor):
+		return "INVALID_CURSOR"
 	case errors.Is(err, os.ErrNotExist):
 		return "FILE_NOT_FOUND"
 	case errors.Is(err, os.ErrExist):

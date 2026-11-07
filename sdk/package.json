@@ -1,6 +1,6 @@
 {
   "name": "rizzbase",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Local-first encrypted Projects, Lobbies and Yaps for Node.js",
   "type": "commonjs",
   "main": "./dist/index.js",

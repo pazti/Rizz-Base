@@ -3,10 +3,10 @@ import { dirname, join, resolve } from "node:path";
 import { ensureCompatibleEngine, resolveBinary } from "./binary.js";
 import { RizzbaseError } from "./errors.js";
 import { callEngine } from "./transport.js";
-import type { Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, RizzbaseOptions, Yap } from "./types.js";
+import type { Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RizzbaseOptions, Yap } from "./types.js";
 export { RizzbaseError } from "./errors.js";
 export type { ErrorCode } from "./errors.js";
-export type { Filter, JsonValue, JsonPrimitive, Lobby, Operator, OrderBy, OrderDirection, Project, QueryOptions, RizzbaseOptions, Yap } from "./types.js";
+export type { Filter, JsonValue, JsonPrimitive, Lobby, Operator, OrderBy, OrderDirection, Project, QueryOptions, QueryPage, RizzbaseOptions, Yap } from "./types.js";
 
 const MAX_BACKUP_SIZE = 64 << 20;
 
@@ -34,6 +34,7 @@ function validateJson(value: unknown, ancestors = new Set<object>()): void {
 
 function validateQuery(options: QueryOptions): void {
   if (options.limit !== undefined && (!Number.isSafeInteger(options.limit) || options.limit < 0)) invalid("limit must be a non-negative safe integer.");
+  if (options.cursor !== undefined && (typeof options.cursor !== "string" || !options.cursor.length || options.cursor.length > 4096)) invalid("cursor must be a non-empty cursor string of at most 4096 characters.");
   if (options.where !== undefined && !Array.isArray(options.where)) invalid("where must be an array of filters.");
   for (const filter of options.where ?? []) {
     if (!filter || typeof filter.field !== "string" || filter.field.split(".").some((segment: string) => !segment.trim())) invalid("Query fields must have non-empty path segments.");
@@ -140,6 +141,12 @@ export class Rizzbase {
     validateQuery(options);
     return (await this.request("yap.query", { lobbyId, query: options })).yaps as Yap<T>[] ?? [];
   }
+  async queryPage<T = JsonValue>(lobbyId: string, options: QueryOptions = {}): Promise<QueryPage<T>> {
+    validateQuery(options);
+    const response = await this.request("yap.query", { lobbyId, query: options });
+    const yaps = (response.yaps as Yap<T>[] | undefined) ?? [];
+    return { yaps, nextCursor: typeof response.nextCursor === "string" ? response.nextCursor : undefined };
+  }
   query<T = JsonValue>(lobbyId: string): YapQuery<T> { return new YapQuery<T>(this, lobbyId); }
 }
 
@@ -157,10 +164,16 @@ export class YapQuery<T = JsonValue> {
     validateQuery(options);
     return new YapQuery<T>(this.db, this.lobbyId, options);
   }
+  cursor(value: string): YapQuery<T> {
+    const options = { ...this.options, cursor: value };
+    validateQuery(options);
+    return new YapQuery<T>(this.db, this.lobbyId, options);
+  }
   orderBy(field: string, direction: OrderDirection = "asc"): YapQuery<T> {
     const options = { ...this.options, orderBy: { field, direction } };
     validateQuery(options);
     return new YapQuery<T>(this.db, this.lobbyId, options);
   }
   async exec(): Promise<Yap<T>[]> { return this.db.queryYaps<T>(this.lobbyId, this.options); }
+  async execPage(): Promise<QueryPage<T>> { return this.db.queryPage<T>(this.lobbyId, this.options); }
 }

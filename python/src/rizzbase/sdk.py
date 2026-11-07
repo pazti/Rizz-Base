@@ -31,6 +31,7 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.FILE_EXISTS,
     ErrorCode.PERMISSION_DENIED,
     ErrorCode.INVALID_BACKUP,
+    ErrorCode.INVALID_CURSOR,
     ErrorCode.ENGINE_ERROR,
 }
 
@@ -241,6 +242,10 @@ def _validate_query(options):
         limit = options["limit"]
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
             _invalid("limit must be a non-negative integer.")
+    if "cursor" in options:
+        cursor = options["cursor"]
+        if not isinstance(cursor, str) or not cursor or len(cursor) > 4096:
+            _invalid("cursor must be a non-empty cursor string of at most 4096 characters.")
     where = options.get("where", [])
     if not isinstance(where, list):
         _invalid("where must be a list of filters.")
@@ -408,6 +413,15 @@ class Rizzbase:
         _validate_query(options)
         return self._request("yap.query", lobbyId=lobby_id, query=options).get("yaps", [])
 
+    def query_page(self, lobby_id, options=None):
+        options = deepcopy(options or {})
+        _validate_query(options)
+        response = self._request("yap.query", lobbyId=lobby_id, query=options)
+        page = {"yaps": response.get("yaps", [])}
+        if isinstance(response.get("nextCursor"), str):
+            page["nextCursor"] = response["nextCursor"]
+        return page
+
     def query(self, lobby_id):
         return YapQuery(self, lobby_id)
 
@@ -436,5 +450,14 @@ class YapQuery:
         _validate_query(options)
         return YapQuery(self._database, self._lobby_id, options)
 
+    def cursor(self, value):
+        options = deepcopy(self._options)
+        options["cursor"] = value
+        _validate_query(options)
+        return YapQuery(self._database, self._lobby_id, options)
+
     def execute(self):
         return self._database.query_yaps(self._lobby_id, self._options)
+
+    def execute_page(self):
+        return self._database.query_page(self._lobby_id, self._options)

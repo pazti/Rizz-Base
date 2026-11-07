@@ -240,6 +240,9 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
   before manually removing its adjacent `.lock` directory.
 - Each operation's JSON request is limited to 64 KiB; query results are
   bounded by the 64 MiB encoded-project file limit.
+- The proposal for a larger V1+ Project limit is tracked in
+  [Project size scaling proposal](docs/project-size-scaling.md). The 64 MiB
+  limit remains unchanged unless an approved implementation increases it.
 - This is local-only V1: no realtime, cloud storage, multi-user access, remote
   backup, or UI connection. The Go API and CLI have their own documented limits.
 

@@ -17,7 +17,8 @@ export interface Project {
 }
 export interface Filter { field: string; operator: Operator; value: JsonValue }
 export interface OrderBy { field: string; direction: OrderDirection }
-export interface QueryOptions { where?: readonly Filter[]; orderBy?: OrderBy; limit?: number }
+export interface QueryOptions { where?: readonly Filter[]; orderBy?: OrderBy; limit?: number; cursor?: string }
+export interface QueryPage<T = JsonValue> { yaps: Yap<T>[]; nextCursor?: string }
 export interface RizzbaseOptions {
   /** Explicit trusted executable; takes precedence over RIZZBASE_BINARY and PATH. */
   binaryPath?: string;

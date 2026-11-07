@@ -39,6 +39,8 @@ yaps = (
     .limit(10)
     .execute()
 )
+page = db.query(lobby["id"]).limit(10).execute_page()
+# Pass page["nextCursor"] to .cursor(next_cursor) for the next page.
 ```
 
 For SDK binary selection and compatibility requirements, see the
