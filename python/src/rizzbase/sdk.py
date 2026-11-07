@@ -34,6 +34,7 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.FILE_EXISTS,
     ErrorCode.PERMISSION_DENIED,
     ErrorCode.INVALID_BACKUP,
+    ErrorCode.INVALID_CURSOR,
     ErrorCode.ENGINE_ERROR,
 }
 _READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query"}

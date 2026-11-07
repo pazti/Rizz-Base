@@ -144,3 +144,89 @@ func TestQueryYaps(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestQueryOrdersLargeNumbersExactly(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "large-numbers.rizz")
+	if _, err := CreateProject(path, "query", "test-only"); err != nil {
+		t.Fatal(err)
+	}
+	lobby, err := CreateLobby(path, "test-only", "general")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, data := range map[string]string{
+		"larger":  `{"score":9007199254740993}`,
+		"smaller": `{"score":9007199254740992}`,
+	} {
+		if err := CreateYap(path, "test-only", lobby.ID, id, json.RawMessage(data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	result, err := QueryYaps(path, "test-only", lobby.ID, QueryOptions{
+		OrderBy: &OrderBy{Field: "score", Direction: "asc"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 || result[0].ID != "smaller" || result[1].ID != "larger" {
+		t.Fatalf("large-number order = %#v", result)
+	}
+}
+
+func TestQueryYapCursorPagination(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pagination.rizz")
+	if _, err := CreateProject(path, "query", "test-only"); err != nil {
+		t.Fatal(err)
+	}
+	lobby, err := CreateLobby(path, "test-only", "general")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, id := range []string{"a", "b", "c"} {
+		data := []string{`{"score":1}`, `{"score":2}`, `{"score":3}`}[i]
+		if err := CreateYap(path, "test-only", lobby.ID, id, json.RawMessage(data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	limit := 1
+	first, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
+		OrderBy: &OrderBy{Field: "score", Direction: "asc"},
+		Limit:   &limit,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first.Yaps) != 1 || first.Yaps[0].ID != "a" || first.NextCursor == "" {
+		t.Fatalf("first page = %#v", first)
+	}
+
+	second, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
+		OrderBy: &OrderBy{Field: "score", Direction: "asc"},
+		Limit:   &limit,
+		Cursor:  first.NextCursor,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second.Yaps) != 1 || second.Yaps[0].ID != "b" || second.NextCursor == "" {
+		t.Fatalf("second page = %#v", second)
+	}
+
+	third, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{
+		OrderBy: &OrderBy{Field: "score", Direction: "asc"},
+		Limit:   &limit,
+		Cursor:  second.NextCursor,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(third.Yaps) != 1 || third.Yaps[0].ID != "c" || third.NextCursor != "" {
+		t.Fatalf("third page = %#v", third)
+	}
+
+	if _, err := QueryYapPage(path, "test-only", lobby.ID, QueryOptions{Cursor: "not-a-valid-cursor"}); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("invalid cursor error = %v", err)
+	}
+}

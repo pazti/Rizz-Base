@@ -176,6 +176,17 @@ await db.query("LOBBY-ID")
 
 `orderBy(field, direction)` takes `"asc"` (default) or `"desc"`. Numbers sort before strings; missing or non-number/string values sort last in either direction; ties fall back to Yap ID. Same semantics as the CLI: AND-combined, dot paths, six operators, missing field never matches, filter → order → cursor → limit. Existing `queryYaps` and builder `exec()` still return arrays for compatibility; use page APIs for continuation.
 
+For bounded pages, use `queryPage()` or the immutable builder's `execPage()`:
+
+```ts
+let page = await db.queryPage("LOBBY-ID", { limit: 20 });
+while (page.nextCursor) {
+  page = await db.queryPage("LOBBY-ID", { limit: 20, cursor: page.nextCursor });
+}
+```
+
+Cursors are query-specific opaque tokens; reuse the same filters and ordering for every page. A missing or incompatible cursor returns `INVALID_CURSOR`.
+
 ### Error codes
 
 `INVALID_ARGUMENT`, `BINARY_UNAVAILABLE`, `ENGINE_INCOMPATIBLE`, `ENGINE_TIMEOUT`, `ENGINE_PROTOCOL_ERROR`, `ENGINE_ERROR`, plus engine codes `AUTHENTICATION_FAILED`, `INVALID_FORMAT`, `PROJECT_BUSY`, `LOBBY_NOT_FOUND`, `YAP_NOT_FOUND`, `YAP_EXISTS`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `PERMISSION_DENIED`, `INVALID_BACKUP`, and SDK-side `EXPORT_FAILED`.
