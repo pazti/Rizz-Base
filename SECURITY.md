@@ -11,7 +11,11 @@ keep it private, and maintain separate encrypted backups.
 Passphrases are supplied by the application through private stdin/API input.
 Never put them in command-line arguments, source code, logs, issue reports, or
 Git history. The library does not enforce minimum passphrase strength and
-currently has no recovery or rotation mechanism.
+cannot recover a lost passphrase. If the current passphrase is known, it can
+be rotated by exporting a decrypted JSON backup and importing it into a new
+encrypted Project with a new passphrase. This is not an in-place key change;
+see the [rotation procedure](docs/security.md#passphrase-rotation) and protect
+the plaintext backup.
 
 Local file access still matters: keep devices and backups secure. Project files
 are created with owner-only permissions on Unix. A writer lock is a local

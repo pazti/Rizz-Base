@@ -17,6 +17,23 @@ behavioral specification.
 The Python package is under [`python/`](../python/README.md). Both SDKs use
 the same offline scenarios in [`conformance/`](../conformance/README.md).
 
+## Engine and project-format compatibility
+
+The compatibility check is a supported-range contract, not a promise that
+every future engine release will retain every behavior:
+
+| SDK | Supported engine versions | Project formats |
+| --- | --- | --- |
+| Node.js / TypeScript 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+| Python 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+
+Both SDKs reject engines below `1.1.0`, engine major version `2` or later, and
+any engine that does not report format `1` through `--version`. The V1 engine
+reads and writes only V1 project envelopes. There is no automatic file-format
+migration; back up a project before changing engine versions. A new format
+requires an explicit compatibility decision and tests before its engine or SDK
+support is published.
+
 ## Python API
 
 The Python API mirrors Node with Python's standard synchronous conventions:
@@ -38,12 +55,16 @@ db.export("./backup.json")
 
 Python SDK behavior:
 
-- Constructor takes `(path, passphrase, binary_path=None, timeout_s=30)`.
+- Constructor takes `(path, passphrase, binary_path=None, timeout_s=30, retry=None)`.
 - Binary resolution order: explicit `binary_path` → `RIZZBASE_BINARY` env → `PATH` → error with install instructions. No silent download.
 - Check `rizzbase --version` before the first request and reject unsupported engine or project-format versions with a typed compatibility error.
 - Shared offline behavior fixtures live in [`conformance/`](../conformance/README.md); add a runner for each SDK so implementations use the same expected results.
 - Errors raise `RizzbaseError` with stable `code` strings matching the CLI `errorCode` set.
+- Only safe read operations retry engine timeouts; write operations wait for a lock within a bounded budget and are never replayed.
+- Read/write coordination and its limits are specified in [`concurrency.md`](./concurrency.md).
 - Queries validate locally (`field` dot-paths, six operators, non-negative integer limit) before spawning the engine.
+- `create_yaps` batches 1–1000 Yap creations atomically in one engine request.
+- Cursor pagination is available with `query_yap_page` / `execute_page`; existing list query methods remain array-returning.
 
 ## Build your own SDK in 20 minutes
 

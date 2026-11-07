@@ -40,11 +40,6 @@ type QueryPage struct {
 	NextCursor string `json:"nextCursor"`
 }
 
-type queryResult struct {
-	yap   Yap
-	order orderedValue
-}
-
 var ErrInvalidCursor = errors.New("invalid or expired query cursor")
 
 // QueryYaps filters and sorts a snapshot without changing the file.
@@ -53,10 +48,7 @@ var ErrInvalidCursor = errors.New("invalid or expired query cursor")
 // and unsupported values sort last; equal values retain Yap-ID order.
 func QueryYaps(path, passphrase, lobbyID string, options QueryOptions) ([]Yap, error) {
 	page, err := QueryYapPage(path, passphrase, lobbyID, options)
-	if err != nil {
-		return nil, err
-	}
-	return page.Yaps, nil
+	return page.Yaps, err
 }
 
 func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (QueryPage, error) {
@@ -107,8 +99,11 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 		return QueryPage{}, err
 	}
 	result := make([]Yap, 0)
-	orderedResults := make([]queryResult, 0)
+	orderValues := make(map[string]orderedValue)
 	for _, yap := range yaps {
+		if options.Cursor == "" && options.OrderBy == nil && options.Limit != nil && len(result) > *options.Limit {
+			break
+		}
 		document, err := decodeValue(yap.Data)
 		if err != nil {
 			return QueryPage{}, err
@@ -122,22 +117,37 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 			}
 		}
 		if matches {
+			result = append(result, yap)
 			if options.OrderBy != nil {
 				value, exists := fieldValue(document, options.OrderBy.Field)
-				orderedResults = append(orderedResults, queryResult{yap: yap, order: orderValue(value, exists)})
-			} else {
-				result = append(result, yap)
+				class, comparable := orderValue(value, exists)
+				orderValues[yap.ID] = orderedValue{class: class, value: comparable}
 			}
 		}
 	}
 	if options.OrderBy != nil {
-		sort.Slice(orderedResults, func(i, j int) bool {
-			return queryResultLess(orderedResults[i], orderedResults[j], options.OrderBy)
+		orderBy := options.OrderBy
+		sort.Slice(result, func(i, j int) bool {
+			left := orderValues[result[i].ID]
+			right := orderValues[result[j].ID]
+			if left.class != right.class {
+				return left.class < right.class
+			}
+			if left.class == 2 {
+				return result[i].ID < result[j].ID
+			}
+			comparison := compareOrder(left.value, right.value)
+			if orderBy.Direction == "desc" {
+				if comparison != 0 {
+					return comparison > 0
+				}
+				return result[i].ID < result[j].ID
+			}
+			if comparison == 0 {
+				return result[i].ID < result[j].ID
+			}
+			return comparison < 0
 		})
-		result = make([]Yap, len(orderedResults))
-		for i, item := range orderedResults {
-			result[i] = item.yap
-		}
 	}
 	if options.Cursor != "" {
 		cursorIndex := -1
@@ -152,7 +162,7 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 		}
 		result = result[cursorIndex+1:]
 	}
-	page := QueryPage{Yaps: result}
+	page := QueryPage{Yaps: result, NextCursor: ""}
 	if options.Limit != nil && len(result) > *options.Limit {
 		page.Yaps = result[:*options.Limit]
 		if *options.Limit > 0 {
@@ -161,6 +171,8 @@ func QueryYapPage(path, passphrase, lobbyID string, options QueryOptions) (Query
 				return QueryPage{}, err
 			}
 		}
+	} else if options.Limit != nil {
+		page.Yaps = result
 	}
 	return page, nil
 }
@@ -182,13 +194,7 @@ func encodeCursor(id, path, lobbyID string, options QueryOptions) (string, error
 		LobbyID string   `json:"lobbyId"`
 		Where   []Filter `json:"where,omitempty"`
 		OrderBy *OrderBy `json:"orderBy,omitempty"`
-	}{
-		Version: 1,
-		Path:    filepath.Clean(absolutePath),
-		LobbyID: lobbyID,
-		Where:   options.Where,
-		OrderBy: options.OrderBy,
-	})
+	}{Version: 1, Path: filepath.Clean(absolutePath), LobbyID: lobbyID, Where: options.Where, OrderBy: options.OrderBy})
 	if err != nil {
 		return "", err
 	}
@@ -218,7 +224,7 @@ func decodeCursor(token, path, lobbyID string, options QueryOptions) (queryCurso
 	}
 	expectedData, err := base64.RawURLEncoding.DecodeString(expected)
 	if err != nil {
-		return queryCursor{}, ErrInvalidCursor
+		return queryCursor{}, err
 	}
 	var expectedCursor queryCursor
 	if err := json.Unmarshal(expectedData, &expectedCursor); err != nil || cursor.QueryHash != expectedCursor.QueryHash {
@@ -228,51 +234,22 @@ func decodeCursor(token, path, lobbyID string, options QueryOptions) (queryCurso
 }
 
 type orderedValue struct {
-	class  int
-	value  any
-	number *big.Rat
+	class int
+	value any
 }
 
-func queryResultLess(left, right queryResult, orderBy *OrderBy) bool {
-	if left.order.class != right.order.class {
-		return left.order.class < right.order.class
-	}
-	if left.order.class == 2 {
-		return left.yap.ID < right.yap.ID
-	}
-	comparison := compareOrderedValues(left.order, right.order)
-	if comparison == 0 {
-		return left.yap.ID < right.yap.ID
-	}
-	if orderBy.Direction == "desc" {
-		return comparison > 0
-	}
-	return comparison < 0
-}
-
-func orderValue(value any, exists bool) orderedValue {
+func orderValue(value any, exists bool) (int, any) {
 	if !exists {
-		return orderedValue{class: 2}
+		return 2, nil
 	}
-	switch typedValue := value.(type) {
+	switch value.(type) {
 	case json.Number:
-		number, ok := new(big.Rat).SetString(string(typedValue))
-		if !ok {
-			return orderedValue{class: 2}
-		}
-		return orderedValue{class: 0, value: typedValue, number: number}
+		return 0, value
 	case string:
-		return orderedValue{class: 1, value: typedValue}
+		return 1, value
 	default:
-		return orderedValue{class: 2}
+		return 2, nil
 	}
-}
-
-func compareOrderedValues(left, right orderedValue) int {
-	if left.class == 0 && right.class == 0 && left.number != nil && right.number != nil {
-		return left.number.Cmp(right.number)
-	}
-	return compareOrder(left.value, right.value)
 }
 
 func compareOrder(a, b any) int {

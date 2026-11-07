@@ -268,3 +268,44 @@ func TestActiveLockFailsClosed(t *testing.T) {
 		t.Fatalf("lock failure changed data: %+v %v", project, err)
 	}
 }
+
+func TestBulkCreateYapsIsAtomic(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bulk.rizz")
+	const passphrase = "bulk-test-only"
+	if _, err := CreateProject(path, "bulk", passphrase); err != nil {
+		t.Fatal(err)
+	}
+	lobby, err := CreateLobby(path, passphrase, "general")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := CreateYaps(path, passphrase, lobby.ID, []YapInput{
+		{ID: "one", Data: json.RawMessage(`{"value":1}`)},
+		{ID: "two", Data: json.RawMessage(`{"value":2}`)},
+	})
+	if err != nil || len(created) != 2 || created[1].ID != "two" {
+		t.Fatalf("bulk create: %#v %v", created, err)
+	}
+	if _, err := CreateYaps(path, passphrase, lobby.ID, []YapInput{
+		{ID: "three", Data: json.RawMessage(`true`)},
+		{ID: "one", Data: json.RawMessage(`false`)},
+	}); !errors.Is(err, ErrYapExists) {
+		t.Fatalf("expected existing ID conflict: %v", err)
+	}
+	if _, err := GetYap(path, passphrase, lobby.ID, "three"); !errors.Is(err, ErrYapNotFound) {
+		t.Fatalf("failed batch partially created a Yap: %v", err)
+	}
+	if _, err := CreateYaps(path, passphrase, lobby.ID, []YapInput{
+		{ID: "three", Data: json.RawMessage(`true`)},
+		{ID: "three", Data: json.RawMessage(`false`)},
+	}); !errors.Is(err, ErrYapExists) {
+		t.Fatalf("expected duplicate batch ID conflict: %v", err)
+	}
+	if _, err := CreateYaps(path, passphrase, lobby.ID, nil); !errors.Is(err, ErrYapBatchEmpty) {
+		t.Fatalf("expected empty batch rejection: %v", err)
+	}
+	yaps, err := ListYaps(path, passphrase, lobby.ID)
+	if err != nil || len(yaps) != 2 {
+		t.Fatalf("unexpected batch contents: %#v %v", yaps, err)
+	}
+}

@@ -66,10 +66,10 @@ The Node SDK requires Node.js 20 or newer and the separately installed engine.
 Python is optional; its SDK requires Python 3.10 or newer. Each SDK checks
 engine and project-format compatibility before its first request.
 
-For Python, install Python 3.10 or newer, then install the SDK from a checkout:
+For Python, install Python 3.10 or newer, then install the SDK from PyPI:
 
 ```sh
-python -m pip install ./python
+python -m pip install rizzbase
 ```
 
 See [engine installation](docs/installation.md) for version pinning, manual
@@ -80,7 +80,7 @@ each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, then both check
 ### Supported languages
 
 - **Node.js / TypeScript** — Node.js 20+, install with `npm install rizzbase`.
-- **Python** — Python 3.10+, install with `python -m pip install ./python`.
+- **Python** — Python 3.10+, install with `python -m pip install rizzbase`.
 
 The SDKs never download the engine automatically; provide it using the
 constructor option, `RIZZBASE_BINARY`, or `PATH`. See the [Node.js guide](docs/node-sdk.md),
@@ -221,7 +221,11 @@ await restored.importBackup("./backup.json");
 JSON backups contain decrypted project data. Store them securely, do not commit
 them, and remove them when no longer needed. Export and import refuse to
 overwrite files; restore creates an encrypted Project using the supplied
-passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project).
+passphrase. Export/import into a new `.rizz` path is also the supported way to
+rotate a passphrase; it is not an in-place key change. Stop writes and verify
+the imported project before switching applications. See the
+[SDK backup API](docs/node-sdk.md#project) and
+[rotation procedure](docs/security.md#passphrase-rotation).
 
 ## Security and limits
 
@@ -230,7 +234,8 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
   arguments. The SDK sends it only to its local engine over stdin.
 - Projects use AES-256-GCM with PBKDF2-HMAC-SHA256 at 600,000 iterations.
   Wrong passphrases and damaged ciphertext fail authentication. There is no
-  passphrase recovery or key rotation.
+  passphrase recovery; rotation requires the current passphrase and a protected
+  plaintext JSON export/import migration.
 - The SDK only runs an engine you provide through `binaryPath`,
   `RIZZBASE_BINARY`, or `PATH`, in that order. It checks the engine's reported
   version and project format before using it.
@@ -240,9 +245,12 @@ passphrase. See the [SDK backup API and safety details](docs/node-sdk.md#project
   before manually removing its adjacent `.lock` directory.
 - Each operation's JSON request is limited to 64 KiB; query results are
   bounded by the 64 MiB encoded-project file limit.
-- The proposal for a larger V1+ Project limit is tracked in
+- The proposal for a larger V1+ Project limit remains tracked in
   [Project size scaling proposal](docs/project-size-scaling.md). The 64 MiB
   limit remains unchanged unless an approved implementation increases it.
+- Performance depends on encrypted Project size; see the
+  [measured engine benchmarks](docs/benchmarks.md) before choosing a Lobby
+  capacity.
 - This is local-only V1: no realtime, cloud storage, multi-user access, remote
   backup, or UI connection. The Go API and CLI have their own documented limits.
 
@@ -261,8 +269,9 @@ npx tsc --noEmit --strict --target ES2022 --module Node16 \
 
 Go 1.24+ and Node.js 20+ are required. The SDK's tests build the local Go CLI
 and exercise it using temporary encrypted projects. Binary releases build six
-OS/architecture variants when a matching version tag is pushed; the current
-source version expects `v1.1.0`.
+OS/architecture variants when a matching version tag is pushed. The latest
+engine release is `v1.2.0`; Node.js and Python SDK packages remain on their
+independent `1.1.0` version line.
 
 See [SDK guide](docs/node-sdk.md), [file format and Go API](doc/FORMAT-legacy.md),
 [contributing](CONTRIBUTING.md) and [security](SECURITY.md). Rizzbase is

@@ -12,6 +12,9 @@ func TestEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if formatVersion, err := Inspect(sealed); err != nil || formatVersion != 1 {
+		t.Fatalf("inspect envelope: version=%d err=%v", formatVersion, err)
+	}
 	got, err := Open(sealed, "test-only passphrase")
 	if err != nil || !bytes.Equal(got, plain) {
 		t.Fatalf("decrypt: %v", err)
@@ -32,6 +35,21 @@ func TestEnvelope(t *testing.T) {
 	}
 }
 
+func TestInspectReportsUnsupportedEnvelopeVersion(t *testing.T) {
+	sealed, err := Seal([]byte("payload"), "test-only passphrase")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sealed[4] = 2
+	version, err := Inspect(sealed)
+	if err != nil || version != 2 {
+		t.Fatalf("inspect future format: version=%d err=%v", version, err)
+	}
+	if _, err := Open(sealed, "test-only passphrase"); !errors.Is(err, ErrFormat) {
+		t.Fatalf("Open accepted unsupported project format: %v", err)
+	}
+}
+
 func TestInvalidEnvelope(t *testing.T) {
 	for _, input := range [][]byte{nil, []byte("not an envelope"), make([]byte, 60)} {
 		if _, err := Open(input, "test"); !errors.Is(err, ErrFormat) {
@@ -41,4 +59,16 @@ func TestInvalidEnvelope(t *testing.T) {
 	if _, err := Seal([]byte("data"), ""); err == nil {
 		t.Fatal("accepted empty passphrase")
 	}
+}
+
+func FuzzInspectEnvelope(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("not an envelope"))
+	f.Add(make([]byte, 60))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 1<<20 {
+			t.Skip()
+		}
+		_, _ = Inspect(data)
+	})
 }

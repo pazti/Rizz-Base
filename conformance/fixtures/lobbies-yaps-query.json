@@ -211,6 +211,55 @@
       "expect": { "errorCode": "YAP_NOT_FOUND" }
     },
     {
+      "id": "bulk-create-yaps",
+      "operation": "yap.bulkCreate",
+      "args": {
+        "lobbyId": "${lobby}",
+        "yaps": [
+          { "id": "m", "data": { "score": 8 } },
+          { "id": "n", "data": { "score": 9 } }
+        ]
+      },
+      "expect": { "fields": { "yaps.0.id": "m", "yaps.1.id": "n", "yaps.length": 2 } }
+    },
+    {
+      "id": "bulk-create-duplicate-existing-is-atomic",
+      "operation": "yap.bulkCreate",
+      "args": {
+        "lobbyId": "${lobby}",
+        "yaps": [
+          { "id": "q", "data": true },
+          { "id": "m", "data": false }
+        ]
+      },
+      "expect": { "errorCode": "YAP_EXISTS" }
+    },
+    {
+      "id": "bulk-failure-did-not-partially-create",
+      "operation": "yap.get",
+      "args": { "lobbyId": "${lobby}", "yapId": "q" },
+      "expect": { "errorCode": "YAP_NOT_FOUND" }
+    },
+    {
+      "id": "query-page-first",
+      "operation": "yap.queryPage",
+      "args": { "lobbyId": "${lobby}", "query": { "limit": 2 } },
+      "capture": { "queryCursor": "page.nextCursor" },
+      "expect": { "fields": { "page.yaps.0.id": "a", "page.yaps.1.id": "b" } }
+    },
+    {
+      "id": "query-page-second",
+      "operation": "yap.queryPage",
+      "args": { "lobbyId": "${lobby}", "query": { "limit": 2, "cursor": "${queryCursor}" } },
+      "expect": { "fields": { "page.yaps.0.id": "c", "page.yaps.1.id": "d" } }
+    },
+    {
+      "id": "query-cursor-rejects-different-query",
+      "operation": "yap.queryPage",
+      "args": { "lobbyId": "${lobby}", "query": { "limit": 2, "where": [{ "field": "score", "operator": ">", "value": 0 }], "cursor": "${queryCursor}" } },
+      "expect": { "errorCode": "INVALID_ARGUMENT" }
+    },
+    {
       "id": "delete-lobby",
       "operation": "lobby.delete",
       "args": { "lobbyId": "${lobby}" }

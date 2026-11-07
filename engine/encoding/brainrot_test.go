@@ -37,3 +37,16 @@ func FuzzRoundTrip(f *testing.F) {
 		}
 	})
 }
+
+func FuzzDecode(f *testing.F) {
+	f.Add("")
+	f.Add("rizz skibidi")
+	f.Add("rizz nope")
+	f.Add("rizz skibidi gyatt")
+	f.Fuzz(func(t *testing.T, text string) {
+		if len(text) > 1<<20 {
+			t.Skip()
+		}
+		_, _ = Decode(text)
+	})
+}

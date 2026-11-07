@@ -2,11 +2,13 @@ import json
 import math
 import os
 import pathlib
+import random
 import re
 import shutil
 import subprocess
 import tempfile
 import threading
+import time
 from copy import deepcopy
 
 from .errors import ErrorCode, RizzbaseError
@@ -21,6 +23,7 @@ MAX_BACKUP_SIZE = 64 << 20
 _VERSION_LOCK = threading.Lock()
 _CHECKED_BINARIES: set[str] = set()
 _ENGINE_ERROR_CODES = {
+    ErrorCode.INVALID_ARGUMENT,
     ErrorCode.AUTHENTICATION_FAILED,
     ErrorCode.INVALID_FORMAT,
     ErrorCode.PROJECT_BUSY,
@@ -34,6 +37,8 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.INVALID_CURSOR,
     ErrorCode.ENGINE_ERROR,
 }
+_READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query"}
+_WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete"}
 
 
 def _invalid(message: str):
@@ -139,6 +144,39 @@ def _incompatible():
     )
 
 
+def _normalize_retry_options(options, timeout_s):
+    if options is None:
+        options = {}
+    if not isinstance(options, dict):
+        _invalid("retry must be a mapping.")
+    allowed = {"max_attempts", "base_delay_ms", "max_delay_ms", "total_budget_ms", "lock_wait_ms"}
+    unknown = set(options) - allowed
+    if unknown:
+        _invalid(f"Unknown retry option: {sorted(unknown)[0]}.")
+    timeout_ms = timeout_s * 1000
+    result = {
+        "max_attempts": options.get("max_attempts", 3),
+        "base_delay_ms": options.get("base_delay_ms", 75),
+        "max_delay_ms": options.get("max_delay_ms", 1000),
+        "total_budget_ms": options.get("total_budget_ms", min(2000, max(0, math.ceil(timeout_ms) - 1))),
+        "lock_wait_ms": options.get("lock_wait_ms", min(1000, max(0, math.ceil(timeout_ms) - 1))),
+    }
+    attempts = result["max_attempts"]
+    if isinstance(attempts, bool) or not isinstance(attempts, int) or not 1 <= attempts <= 10:
+        _invalid("retry.max_attempts must be an integer from 1 to 10.")
+    for name in ("base_delay_ms", "max_delay_ms", "total_budget_ms", "lock_wait_ms"):
+        value = result[name]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            _invalid(f"retry.{name} must be a non-negative integer.")
+    if result["max_delay_ms"] < result["base_delay_ms"]:
+        _invalid("retry.max_delay_ms must be at least retry.base_delay_ms.")
+    if result["total_budget_ms"] >= timeout_ms:
+        _invalid("retry.total_budget_ms must be less than timeout_s.")
+    if result["lock_wait_ms"] >= timeout_ms:
+        _invalid("retry.lock_wait_ms must be less than timeout_s.")
+    return result
+
+
 class _OutputLimitExceeded(Exception):
     pass
 
@@ -242,10 +280,8 @@ def _validate_query(options):
         limit = options["limit"]
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
             _invalid("limit must be a non-negative integer.")
-    if "cursor" in options:
-        cursor = options["cursor"]
-        if not isinstance(cursor, str) or not cursor or len(cursor) > 4096:
-            _invalid("cursor must be a non-empty cursor string of at most 4096 characters.")
+    if "cursor" in options and (not isinstance(options["cursor"], str) or len(options["cursor"]) > 4096):
+        _invalid("cursor must be a string no longer than 4096 characters.")
     where = options.get("where", [])
     if not isinstance(where, list):
         _invalid("where must be a list of filters.")
@@ -272,7 +308,7 @@ def _validate_query(options):
 
 
 class Rizzbase:
-    def __init__(self, path, passphrase, *, binary_path=None, timeout_s=30):
+    def __init__(self, path, passphrase, *, binary_path=None, timeout_s=30, retry=None):
         if not isinstance(path, str) or not path.endswith(".rizz"):
             _invalid("Invalid project path: expected a .rizz file.")
         if not isinstance(passphrase, str) or not passphrase:
@@ -284,6 +320,7 @@ class Rizzbase:
         self._passphrase = passphrase
         self._binary_path = binary_path
         self._timeout_s = timeout_s
+        self._retry = _normalize_retry_options(retry, timeout_s)
         self._operation_lock = threading.RLock()
 
     def _request(self, operation, **fields):
@@ -293,6 +330,8 @@ class Rizzbase:
             "passphrase": self._passphrase,
             **fields,
         }
+        if operation in _WRITE_OPERATIONS:
+            body["lockWaitMs"] = self._retry["lock_wait_ms"]
         try:
             encoded = json.dumps(body, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
         except (TypeError, ValueError) as error:
@@ -303,22 +342,42 @@ class Rizzbase:
         with self._operation_lock:
             binary = _resolve_binary(self._binary_path)
             _ensure_compatible(binary)
-            try:
-                return_code, output = _run_bounded(
-                    [binary],
-                    input_data=encoded,
-                    timeout_s=self._timeout_s,
-                    max_output=MAX_RESPONSE_SIZE,
+            retry_deadline = None
+            for attempt in range(1, self._retry["max_attempts"] + 1):
+                attempt_timeout = self._timeout_s if attempt == 1 else min(
+                    self._timeout_s,
+                    max(0, retry_deadline - time.monotonic()),
                 )
-            except subprocess.TimeoutExpired as error:
-                raise RizzbaseError(
-                    "Engine request timed out; inspect the project lock before retrying writes.",
-                    ErrorCode.ENGINE_TIMEOUT,
-                ) from error
-            except OSError as error:
-                raise _binary_unavailable(f"binary_path: {binary}") from error
-            except _OutputLimitExceeded as error:
-                raise RizzbaseError("Engine response exceeded its size limit.", ErrorCode.ENGINE_PROTOCOL_ERROR) from error
+                if attempt_timeout <= 0:
+                    raise RizzbaseError("Safe retry budget expired.", ErrorCode.ENGINE_TIMEOUT)
+                try:
+                    return_code, output = _run_bounded(
+                        [binary],
+                        input_data=encoded,
+                        timeout_s=attempt_timeout,
+                        max_output=MAX_RESPONSE_SIZE,
+                    )
+                    break
+                except subprocess.TimeoutExpired as error:
+                    timeout_error = RizzbaseError(
+                        "Engine request timed out; writes are not automatically retried because their outcome may be ambiguous.",
+                        ErrorCode.ENGINE_TIMEOUT,
+                    )
+                    can_retry = operation in _READ_OPERATIONS and attempt < self._retry["max_attempts"]
+                    if not can_retry:
+                        raise timeout_error from error
+                    if retry_deadline is None:
+                        retry_deadline = time.monotonic() + self._retry["total_budget_ms"] / 1000
+                    remaining_ms = (retry_deadline - time.monotonic()) * 1000
+                    if remaining_ms <= 0:
+                        raise timeout_error from error
+                    ceiling = min(self._retry["max_delay_ms"], self._retry["base_delay_ms"] * (2 ** (attempt - 1)))
+                    delay_ms = random.uniform(0, min(ceiling, remaining_ms))
+                    time.sleep(delay_ms / 1000)
+                except OSError as error:
+                    raise _binary_unavailable(f"binary_path: {binary}") from error
+                except _OutputLimitExceeded as error:
+                    raise RizzbaseError("Engine response exceeded its size limit.", ErrorCode.ENGINE_PROTOCOL_ERROR) from error
 
         if len(output) > MAX_RESPONSE_SIZE:
             raise RizzbaseError("Engine response exceeded its size limit.", ErrorCode.ENGINE_PROTOCOL_ERROR)
@@ -333,7 +392,12 @@ class Rizzbase:
             if code not in _ENGINE_ERROR_CODES:
                 code = ErrorCode.ENGINE_ERROR
             message = response.get("error")
-            raise RizzbaseError(message if isinstance(message, str) else "Engine operation failed.", code)
+            context = response.get("errorContext")
+            raise RizzbaseError(
+                message if isinstance(message, str) else "Engine operation failed.",
+                code,
+                context if isinstance(context, dict) else None,
+            )
         if return_code != 0:
             raise RizzbaseError("Engine exited unsuccessfully.", ErrorCode.ENGINE_ERROR)
         return response
@@ -343,6 +407,10 @@ class Rizzbase:
 
     def open(self):
         return self._request("open")["project"]
+
+    def doctor(self):
+        """Return non-destructive project diagnostics; supplying a passphrase enables full validation."""
+        return self._request("doctor")["doctor"]
 
     def export(self, backup_path):
         if not isinstance(backup_path, str) or not backup_path.endswith(".json"):
@@ -395,6 +463,22 @@ class Rizzbase:
         _validate_json(data)
         return self._request("yap.create", lobbyId=lobby_id, yapId=yap_id, data=data)["yap"]
 
+    def create_yaps(self, lobby_id, yaps):
+        if not isinstance(yaps, list) or not 1 <= len(yaps) <= 1000:
+            _invalid("yaps must be a non-empty list of at most 1000 items.")
+        ids = set()
+        for yap in yaps:
+            if not isinstance(yap, dict) or set(yap) != {"id", "data"}:
+                _invalid("Each batch Yap must contain exactly id and data.")
+            identifier = yap["id"]
+            if not isinstance(identifier, str) or not identifier.strip() or len(identifier.encode("utf-8")) > 128:
+                _invalid("Each Yap requires an ID between 1 and 128 bytes.")
+            if identifier in ids:
+                _invalid(f"Duplicate Yap ID in batch: {identifier}.")
+            ids.add(identifier)
+            _validate_json(yap["data"])
+        return self._request("yap.bulkCreate", lobbyId=lobby_id, yaps=yaps).get("yaps", [])
+
     def get_yap(self, lobby_id, yap_id):
         return self._request("yap.get", lobbyId=lobby_id, yapId=yap_id)["data"]
 
@@ -413,14 +497,10 @@ class Rizzbase:
         _validate_query(options)
         return self._request("yap.query", lobbyId=lobby_id, query=options).get("yaps", [])
 
-    def query_page(self, lobby_id, options=None):
+    def query_yap_page(self, lobby_id, options=None):
         options = deepcopy(options or {})
         _validate_query(options)
-        response = self._request("yap.query", lobbyId=lobby_id, query=options)
-        page = {"yaps": response.get("yaps", [])}
-        if isinstance(response.get("nextCursor"), str):
-            page["nextCursor"] = response["nextCursor"]
-        return page
+        return self._request("yap.query", lobbyId=lobby_id, query=options)["page"]
 
     def query(self, lobby_id):
         return YapQuery(self, lobby_id)
@@ -450,9 +530,9 @@ class YapQuery:
         _validate_query(options)
         return YapQuery(self._database, self._lobby_id, options)
 
-    def cursor(self, value):
+    def after(self, cursor):
         options = deepcopy(self._options)
-        options["cursor"] = value
+        options["cursor"] = cursor
         _validate_query(options)
         return YapQuery(self._database, self._lobby_id, options)
 
@@ -460,4 +540,4 @@ class YapQuery:
         return self._database.query_yaps(self._lobby_id, self._options)
 
     def execute_page(self):
-        return self._database.query_page(self._lobby_id, self._options)
+        return self._database.query_yap_page(self._lobby_id, self._options)
