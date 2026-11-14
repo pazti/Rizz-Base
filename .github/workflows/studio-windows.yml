@@ -1,0 +1,103 @@
+name: Rizzbase Studio Windows Installer
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/studio-windows.yml"
+      - "engine/**"
+      - "index.html"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "public/**"
+      - "rizzbase-brand-kit/**"
+      - "src/**"
+      - "studio/**"
+      - "vite.config.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: studio/go.sum
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.34.3"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install NSIS
+        run: |
+          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
+            choco install nsis --yes --no-progress
+          }
+          $nsisPath = Join-Path ${env:ProgramFiles(x86)} "NSIS"
+          if (Test-Path (Join-Path $nsisPath "makensis.exe")) {
+            $env:PATH = "$nsisPath;$env:PATH"
+          }
+          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
+            throw "NSIS was not found after installation."
+          }
+
+      - name: Install Wails CLI
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+          "$(Join-Path (go env GOPATH) 'bin')" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Build Windows installer
+        working-directory: studio
+        run: wails build -platform windows/amd64 -nsis -webview2 download
+
+      - name: Install and launch on clean Windows runner
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem "studio/build/bin" -File -Filter "*installer*.exe" | Select-Object -First 1
+          if (-not $installer) {
+            Get-ChildItem "studio/build/bin"
+            throw "Wails did not produce an NSIS installer."
+          }
+
+          $installDir = Join-Path $env:RUNNER_TEMP "Rizzbase Studio"
+          $installResult = Start-Process -FilePath $installer.FullName -ArgumentList @("/S", "/D=$installDir") -Wait -PassThru
+          if ($installResult.ExitCode -ne 0) {
+            throw "Silent installer exited with code $($installResult.ExitCode)."
+          }
+
+          $app = Join-Path $installDir "Rizzbase Studio.exe"
+          if (-not (Test-Path $app)) {
+            throw "Installed application was not found at $app."
+          }
+
+          $process = Start-Process -FilePath $app -PassThru
+          Start-Sleep -Seconds 10
+          $process.Refresh()
+          if ($process.HasExited) {
+            throw "Rizzbase Studio exited during startup with code $($process.ExitCode)."
+          }
+          Stop-Process -Id $process.Id -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rizzbase-studio-windows
+          path: studio/build/bin/*.exe
+          if-no-files-found: error
+          retention-days: 7

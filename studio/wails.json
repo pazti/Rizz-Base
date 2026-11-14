@@ -1,0 +1,15 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Rizzbase Studio",
+  "outputfilename": "Rizzbase Studio",
+  "build:tags": "webkit2_41",
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "node build.mjs",
+  "frontend:dev:watcher": "node dev.mjs",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Rizzbase",
+    "email": ""
+  }
+}

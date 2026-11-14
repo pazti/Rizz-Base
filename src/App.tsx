@@ -6,12 +6,15 @@ import { Dashboard, Editor, Lobby } from "./pages/Preview";
 import Auth from "./pages/Auth";
 import Pricing from "./pages/Pricing";
 import DocsPage from "./pages/DocsPage";
+import Studio from "./Studio";
 
 export default function App() {
+  if (import.meta.env.MODE === "studio") return <Studio />;
+
   const getPage = (): Page => {
     const hash = window.location.hash.replace("#/", "");
     const root = hash.split("/")[0] as Page;
-    return ["home", "dashboard", "lobby", "editor", "auth", "pricing", "docs"].includes(root) ? root : "home";
+    return ["home", "dashboard", "lobby", "editor", "auth", "pricing", "docs", "studio"].includes(root) ? root : "home";
   };
   const getDocSlug = (): string => {
     const parts = window.location.hash.replace("#/", "").split("/");
@@ -47,5 +50,6 @@ export default function App() {
   if (page === "auth") return <Auth theme={theme} toggle={toggle} go={go} />;
   if (page === "pricing") return <Pricing theme={theme} toggle={toggle} go={go} />;
   if (page === "docs") return <DocsPage theme={theme} toggle={toggle} go={go} slug={docSlug} />;
+  if (page === "studio") return <Studio preview />;
   return <Landing theme={theme} toggle={toggle} go={go} />;
 }

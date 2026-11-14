@@ -53,9 +53,52 @@ var (
 	ErrYapBatchEmpty = errors.New("Yap batch must contain at least one item.")
 )
 
+type ProjectBackupSummary struct {
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"createdAt"`
+	LobbyCount int       `json:"lobbyCount"`
+	YapCount   int       `json:"yapCount"`
+}
+
+// InspectProjectBackup validates a decrypted JSON backup and returns its
+// metadata without exposing its Yap contents.
+func InspectProjectBackup(backupPath string) (ProjectBackupSummary, error) {
+	project, err := readProjectBackup(backupPath)
+	if err != nil {
+		return ProjectBackupSummary{}, err
+	}
+	defer clearProjectYaps(project)
+
+	summary := ProjectBackupSummary{
+		Name:       project.Name,
+		CreatedAt:  project.CreatedAt,
+		LobbyCount: len(project.Lobbies),
+	}
+	for _, lobby := range project.Lobbies {
+		summary.YapCount += len(lobby.Yaps)
+	}
+	return summary, nil
+}
+
 // ImportProject validates a decrypted JSON backup and creates a new encrypted
 // project. Existing project files are never overwritten.
 func ImportProject(path, passphrase, backupPath string) (*Project, error) {
+	project, err := readProjectBackup(backupPath)
+	if err != nil {
+		return nil, err
+	}
+	plaintext, err := json.Marshal(project)
+	if err != nil {
+		return nil, fmt.Errorf("encode imported project: %w", err)
+	}
+	defer clear(plaintext)
+	if err := storage.Create(path, passphrase, plaintext); err != nil {
+		return nil, err
+	}
+	return project, nil
+}
+
+func readProjectBackup(backupPath string) (*Project, error) {
 	file, err := os.Open(backupPath)
 	if err != nil {
 		return nil, err
@@ -80,15 +123,15 @@ func ImportProject(path, passphrase, backupPath string) (*Project, error) {
 	if err != nil {
 		return nil, ErrInvalidBackup
 	}
-	plaintext, err := json.Marshal(project)
-	if err != nil {
-		return nil, fmt.Errorf("encode imported project: %w", err)
-	}
-	defer clear(plaintext)
-	if err := storage.Create(path, passphrase, plaintext); err != nil {
-		return nil, err
-	}
 	return project, nil
+}
+
+func clearProjectYaps(project *Project) {
+	for _, lobby := range project.Lobbies {
+		for _, data := range lobby.Yaps {
+			clear(data)
+		}
+	}
 }
 
 func CreateProject(path, name, passphrase string) (*Project, error) {

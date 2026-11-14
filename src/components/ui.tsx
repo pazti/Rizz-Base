@@ -21,11 +21,23 @@ export const Icon = ({ name }: { name: string }) => {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 };
 
-export function Logo({ onClick }: { onClick?: () => void }) {
+export function Logo({
+  onClick,
+  onDark = false,
+}: {
+  onClick?: () => void;
+  onDark?: boolean;
+}) {
   return (
-    <button className="logo" onClick={onClick} type="button">
-      <span className="logo-mark"><i>R</i></span>
-      <strong>RIZZBASE</strong>
+    <button className="logo" onClick={onClick} type="button" aria-label="Rizzbase home">
+      <img
+        src={
+          onDark
+            ? "/brand/rizzbase-wordmark-on-dark.svg"
+            : "/brand/rizzbase-wordmark-on-light.svg"
+        }
+        alt="Rizzbase"
+      />
     </button>
   );
 }
@@ -44,7 +56,7 @@ export function ThemeToggle({ theme, toggle }: { theme: Theme; toggle: () => voi
   );
 }
 
-export function Button({ children, tone = "yellow", onClick }: { children: ReactNode; tone?: "yellow" | "pink" | "plain" | "black"; onClick?: () => void }) {
+export function Button({ children, tone = "primary", onClick }: { children: ReactNode; tone?: "primary" | "secondary" | "plain" | "dark"; onClick?: () => void }) {
   return <button className={`btn ${tone}`} type="button" onClick={onClick}>{children}</button>;
 }
 
@@ -62,5 +74,5 @@ export function ComingSoonNotice({ message }: { message: string }) {
 }
 
 export function BigBanner() {
-  return <section className="big-banner"><div><small>LOCAL-FIRST V1</small><h2>YOUR PROJECT.<br /><span>YOUR DEVICE.</span></h2></div><a className="btn pink" href="https://www.npmjs.com/package/rizzbase" target="_blank" rel="noreferrer">GET THE SDK <Icon name="arrow" /></a></section>;
+  return <section className="big-banner"><div><small>LOCAL-FIRST V1</small><h2>YOUR PROJECT.<br /><span>YOUR DEVICE.</span></h2></div><a className="btn primary" href="https://www.npmjs.com/package/rizzbase" target="_blank" rel="noreferrer">GET THE SDK <Icon name="arrow" /></a></section>;
 }

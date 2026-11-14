@@ -164,6 +164,15 @@ directory if setting these manually. The app uses hash-based navigation, so it
 does not require server rewrites. The deployed UI remains a preview using sample data. It is not connected to
 local `.rizz` files and does not provide hosted database features.
 
+## Rizzbase Studio
+
+Rizzbase Studio is the Wails desktop app for creating and opening local
+Projects, browsing and editing Lobbies and Yaps, and exporting JSON backups.
+It calls the Go engine directly and does not add a hosted database or account
+service. See the [Studio development guide](studio/README.md) for prerequisites
+and build instructions. The browser preview remains separate and cannot access
+local `.rizz` files.
+
 ## Reopen an existing Project
 
 ```ts

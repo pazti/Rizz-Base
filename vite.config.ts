@@ -12,13 +12,16 @@ export default defineConfig(({ mode }) => {
   const emitSourcemaps = mode === 'development'
 
   return {
-    base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
+    base: mode === 'studio'
+      ? './'
+      : process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
     },
     plugins: [
 react(),
+      localStudioFonts(mode),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),
       figmaErrorOverlayReplay(),
@@ -47,6 +50,33 @@ react(),
     },
   }
 })
+
+function localStudioFonts(mode: string): Plugin {
+  return {
+    name: 'local-studio-fonts',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        if (mode === 'studio') return html
+        return {
+          html,
+          tags: [
+            { tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.googleapis.com' }, injectTo: 'head' },
+            { tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }, injectTo: 'head' },
+            {
+              tag: 'link',
+              attrs: {
+                rel: 'stylesheet',
+                href: 'https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap',
+              },
+              injectTo: 'head',
+            },
+          ],
+        }
+      },
+    },
+  }
+}
 
 type FigmaSiteConfiguration = {
   title?: string

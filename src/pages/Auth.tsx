@@ -4,7 +4,7 @@ import { Button, Icon, Logo, ThemeToggle } from "../components/ui";
 export default function Auth({ theme, toggle, go }: PageProps) {
   return (
     <main className="auth-page">
-      <div className="auth-top"><Logo onClick={() => go("home")} /><ThemeToggle theme={theme} toggle={toggle} /></div>
+      <div className="auth-top"><Logo onClick={() => go("home")} onDark={theme === "dark"} /><ThemeToggle theme={theme} toggle={toggle} /></div>
       <div className="auth-scribble one">✦</div><div className="auth-scribble two">↗</div>
       <section className="auth-card coming-soon-card">
         <div className="auth-badge">LOCAL-ONLY V1</div>

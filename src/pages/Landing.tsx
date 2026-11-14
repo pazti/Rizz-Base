@@ -8,13 +8,13 @@ function MiniDashboard({ go }: { go: Go }) {
   return (
     <div className="mini-dashboard">
       <div className="mini-side">
-        <Logo />
+        <Logo onDark />
         <span className="active"><Icon name="data" /> Data</span>
         <span><Icon name="realtime" /> Realtime</span>
         <span><Icon name="rules" /> Rules</span>
       </div>
       <div className="mini-main">
-        <div className="mini-head"><div><small>LOCAL PREVIEW</small><h3>lobbies</h3></div><Button tone="pink" onClick={() => go("dashboard")}><Icon name="plus" /> Add lobby</Button></div>
+        <div className="mini-head"><div><small>LOCAL PREVIEW</small><h3>lobbies</h3></div><Button tone="primary" onClick={() => go("dashboard")}><Icon name="plus" /> Add lobby</Button></div>
         <div className="mini-tabs"><b>Table</b><span>JSON</span><span>Vibes</span></div>
         <div className="mini-table">
           <div><b>TYPE</b><b>LOBBY</b><b>STORAGE</b></div>

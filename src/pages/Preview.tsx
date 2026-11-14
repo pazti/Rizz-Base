@@ -8,8 +8,8 @@ export function Dashboard({ theme, toggle, go }: PageProps) {
   return (
     <AppShell page="lobbies" theme={theme} toggle={toggle} go={go}>
       <main className="product-page">
-        <div className="product-heading"><div><span className="kicker">PREVIEW / SAMPLE DATA</span><h1>LOBBIES<span>.</span></h1><p>Your chaotic little corners of the internet.</p></div><Button tone="pink"><Icon name="plus" /> NEW LOBBY</Button></div>
-        <div className="collection-tools"><div className="search">⌕ <span>Search lobbies...</span></div><div><Button tone="plain">FILTERS</Button><Button tone="black">▦ GRID</Button></div></div>
+        <div className="product-heading"><div><span className="kicker">PREVIEW / SAMPLE DATA</span><h1>LOBBIES<span>.</span></h1><p>Your chaotic little corners of the internet.</p></div><Button tone="primary"><Icon name="plus" /> NEW LOBBY</Button></div>
+        <div className="collection-tools"><div className="search">⌕ <span>Search lobbies...</span></div><div><Button tone="plain">FILTERS</Button><Button tone="dark">▦ GRID</Button></div></div>
         <div className="lobby-grid">
           {lobbies.map((lobby) => (
             <article className="lobby-card" key={lobby.name} onClick={() => go("lobby")}>
@@ -31,7 +31,7 @@ export function Lobby({ theme, toggle, go }: PageProps) {
     <AppShell page="hot-girl-deploy" theme={theme} toggle={toggle} go={go}>
       <main className="product-page">
         <button className="back-link" onClick={() => go("dashboard")}><Icon name="back" /> ALL LOBBIES</button>
-        <div className="product-heading compact"><div><div className="live-line"><span>SAMPLE</span></div><h1>HOT-GIRL-DEPLOY<span>.</span></h1><p>Example data for the interface preview.</p></div><Button tone="pink" onClick={() => go("editor")}><Icon name="plus" /> ADD YAP</Button></div>
+        <div className="product-heading compact"><div><div className="live-line"><span>SAMPLE</span></div><h1>HOT-GIRL-DEPLOY<span>.</span></h1><p>Example data for the interface preview.</p></div><Button tone="primary" onClick={() => go("editor")}><Icon name="plus" /> ADD YAP</Button></div>
           <div className="content-tabs"><button className="active">TABLE</button><button>JSON</button><button>VIBES</button></div>
         <div className="lobby-layout">
           <div className="data-panel">

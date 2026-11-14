@@ -2,6 +2,7 @@ node_modules/
 /generated-artifacts/
 *.tgz
 /engine/bin/
+/studio/frontend/wailsjs/
 *.rizz
 .rizzbase-*
 dist/

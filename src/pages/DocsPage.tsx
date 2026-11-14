@@ -7,7 +7,7 @@ export default function DocsPage({ theme, toggle, go, slug }: PageProps & { slug
   return (
     <>
       <header className="docs-topbar">
-        <Logo onClick={() => go("home")} />
+        <Logo onClick={() => go("home")} onDark={theme === "dark"} />
         <div>
           <StarButton />
           <ThemeToggle theme={theme} toggle={toggle} />
