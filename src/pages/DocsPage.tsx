@@ -1,6 +1,6 @@
 import type { PageProps } from "../types";
 import { Footer } from "../components/layout";
-import { DocsContent } from "../Docs";
+import { DocsContent } from "../Docs.tsx";
 import { Logo, StarButton, ThemeToggle } from "../components/ui";
 
 export default function DocsPage({ theme, toggle, go, slug }: PageProps & { slug: string }) {
