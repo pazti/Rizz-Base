@@ -1,8 +1,28 @@
-# Rizzbase
+<p align="center">
+  <a href="https://github.com/pazti/Rizz-Base">
+    <img src="public/brand/rizzbase-wordmark-on-dark.svg" alt="Rizzbase" width="270" />
+  </a>
+</p>
 
-Rizzbase is a local-first database for Node.js. Each Project is one encrypted,
-Brainrot-encoded `.rizz` file on your computer. There is no cloud service,
-network database, account, or realtime connection.
+<p align="center">
+  <strong>Local-first storage. Your data stays on your machine.</strong><br />
+  Encrypted Projects in one portable <code>.rizz</code> file. No hosted database, accounts, or realtime service.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/LOCAL--FIRST-PRIVATE%20BY%20DESIGN-0B0F0E?style=for-the-badge&labelColor=0B0F0E&color=38BFA2" alt="Local-first, private by design" />
+  <img src="https://img.shields.io/badge/ENCRYPTION-AES--256--GCM-0B0F0E?style=for-the-badge&labelColor=0B0F0E&color=38BFA2" alt="AES-256-GCM encryption" />
+  <a href="https://github.com/pazti/Rizz-Base/releases/tag/studio-v1.0.0">
+    <img src="https://img.shields.io/badge/STUDIO-WINDOWS%20APP-0B0F0E?style=for-the-badge&labelColor=0B0F0E&color=38BFA2" alt="Download Rizzbase Studio for Windows" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="#technology-stack"><strong>Technology stack</strong></a> ·
+  <a href="#install"><strong>Install</strong></a> ·
+  <a href="#rizzbase-studio"><strong>Rizzbase Studio</strong></a> ·
+  <a href="docs/node-sdk.md"><strong>Documentation</strong></a>
+</p>
 
 ## Why Rizzbase?
 
@@ -20,6 +40,25 @@ V1 includes the Go engine and CLI, TypeScript/Node.js and Python SDKs,
 Project/Lobby/Yap operations, in-memory filters and ordering, and JSON
 export/restore. The React product UI is a preview and is not connected to
 local database files.
+
+## Technology stack
+
+<p>
+  <img src="https://img.shields.io/badge/Go-engine-0B0F0E?style=for-the-badge&logo=go&logoColor=00ADD8" alt="Go engine" />
+  <img src="https://img.shields.io/badge/Node.js-SDK-0B0F0E?style=for-the-badge&logo=nodedotjs&logoColor=5FA04E" alt="Node.js SDK" />
+  <img src="https://img.shields.io/badge/TypeScript-typed%20API-0B0F0E?style=for-the-badge&logo=typescript&logoColor=3178C6" alt="TypeScript SDK" />
+  <img src="https://img.shields.io/badge/Python-SDK-0B0F0E?style=for-the-badge&logo=python&logoColor=FFD43B" alt="Python SDK" />
+  <img src="https://img.shields.io/badge/Wails-desktop-0B0F0E?style=for-the-badge&logo=wails&logoColor=38BFA2" alt="Wails desktop app" />
+  <img src="https://img.shields.io/badge/React-UI-0B0F0E?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React UI" />
+  <img src="https://img.shields.io/badge/Vite-build-0B0F0E?style=for-the-badge&logo=vite&logoColor=646CFF" alt="Vite build tooling" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-styles-0B0F0E?style=for-the-badge&logo=tailwindcss&logoColor=06B6D4" alt="Tailwind CSS" />
+</p>
+
+- **Core:** Go engine and CLI; encrypted Projects use AES-256-GCM.
+- **SDKs:** Node.js with TypeScript, plus Python.
+- **Desktop:** Wails app with a React interface.
+- **Web preview:** React, Vite, and Tailwind CSS; it uses sample data and
+  cannot access local `.rizz` files.
 
 ## Install
 
