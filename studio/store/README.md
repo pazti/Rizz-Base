@@ -49,6 +49,11 @@ certification notes, explain that full trust is needed for the native Wails
 window and embedded Go engine, while project files remain on-device at paths
 chosen by the user.
 
+The Windows executable uses Wails' WebView2 `download` strategy. If the
+runtime is missing or outdated, Wails asks before starting Microsoft's setup
+flow and reports setup failures instead of silently falling back to another
+browser.
+
 The package's square logos are generated from the official dark Rizzbase
 favicon mark with its teal accent. Wails also takes its executable and
 installer icon from this brand asset. Use the brand wordmark and teal-on-dark
