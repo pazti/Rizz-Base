@@ -1,6 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "Rizzbase Studio",
+  "version": "1.0.0",
   "outputfilename": "Rizzbase Studio",
   "build:tags": "webkit2_41",
   "frontend:dir": "frontend",
@@ -11,5 +12,12 @@
   "author": {
     "name": "Rizzbase",
     "email": ""
+  },
+  "info": {
+    "companyName": "Rizzbase",
+    "productName": "Rizzbase Studio",
+    "productVersion": "1.0.0.0",
+    "copyright": "Copyright 2026 Rizzbase",
+    "comments": "Local-first workspace for encrypted Rizzbase Projects"
   }
 }

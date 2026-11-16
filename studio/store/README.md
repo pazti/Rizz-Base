@@ -33,10 +33,11 @@ the package with a development certificate trusted on the test machine.
 
 The `Rizzbase Studio Windows Installer` GitHub Actions workflow builds and
 tests both the existing NSIS installer and a test-identity MSIX on a clean
-Windows runner. Its MSIX uses a local test identity and is **not** the package
-to submit to Partner Center. Run the workflow manually with the reserved
-identity, publisher, publisher display name, and version to produce a
-submission-ready unsigned MSIX.
+Windows runner, including Windows App Certification Kit validation. Its MSIX
+uses a local test identity and is **not** the package to submit to Partner
+Center. Run the workflow manually with the reserved identity, publisher,
+publisher display name, and version to produce a submission-ready unsigned
+MSIX.
 
 ## Capabilities and Store assets
 
@@ -48,10 +49,11 @@ certification notes, explain that full trust is needed for the native Wails
 window and embedded Go engine, while project files remain on-device at paths
 chosen by the user.
 
-The package's square logos are generated from the official dark Rizzbase mark
-with its teal accent. Use the brand wordmark and teal-on-dark palette in Store
-listing screenshots as well; capture the actual Studio UI with a throwaway
-Project containing no personal data.
+The package's square logos are generated from the official dark Rizzbase
+favicon mark with its teal accent. Wails also takes its executable and
+installer icon from this brand asset. Use the brand wordmark and teal-on-dark
+palette in Store listing screenshots; capture the actual Studio UI with a
+throwaway Project containing no personal data.
 
 ## Partner Center checklist
 

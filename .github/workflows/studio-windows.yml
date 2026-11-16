@@ -86,6 +86,38 @@ jobs:
         working-directory: studio
         run: wails build -platform windows/amd64 -nsis -webview2 download
 
+      - name: Verify Windows app branding
+        shell: pwsh
+        run: |
+          $brandHash = (Get-FileHash "public/favicon-512.png" -Algorithm SHA256).Hash
+          $appIconHash = (Get-FileHash "studio/build/appicon.png" -Algorithm SHA256).Hash
+          if ($brandHash -ne $appIconHash) {
+            throw "The Wails application icon does not match the official Rizzbase brand mark."
+          }
+
+          $iconPath = "studio/build/windows/icon.ico"
+          if (-not (Test-Path $iconPath)) {
+            throw "Wails did not generate the Windows application icon."
+          }
+          $iconBytes = [System.IO.File]::ReadAllBytes((Resolve-Path $iconPath))
+          $iconCount = [BitConverter]::ToUInt16($iconBytes, 4)
+          if ($iconCount -lt 6) {
+            throw "The Windows application icon is missing its multi-size icon variants."
+          }
+
+          $executable = "studio/build/bin/Rizzbase Studio.exe"
+          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $executable))
+          $expectedMetadata = @{
+            CompanyName = "Rizzbase"
+            ProductName = "Rizzbase Studio"
+            ProductVersion = "1.0.0.0"
+          }
+          foreach ($property in $expectedMetadata.Keys) {
+            if ($versionInfo.$property -ne $expectedMetadata[$property]) {
+              throw "Windows executable $property is '$($versionInfo.$property)' instead of '$($expectedMetadata[$property])'."
+            }
+          }
+
       - name: Package Microsoft Store MSIX
         env:
           STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
@@ -149,7 +181,7 @@ jobs:
           }
           Stop-Process -Id $process.Id -Force
 
-      - name: Sign and install MSIX package
+      - name: Sign MSIX package for local validation
         timeout-minutes: 2
         env:
           STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
@@ -173,17 +205,21 @@ jobs:
           Copy-Item $packagePath $signedPackage -Force
 
           $sdkBin = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
-          $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
-          if (-not $signtool) {
-            $signtool = Get-ChildItem $sdkBin -Filter "signtool.exe" -File -Recurse |
-              Where-Object { $_.FullName -match "\\x64\\signtool\.exe$" } |
-              Sort-Object FullName -Descending |
+          $signtoolCommand = Get-Command signtool.exe -ErrorAction SilentlyContinue
+          if ($signtoolCommand) {
+            $signtoolPath = $signtoolCommand.Source
+          } else {
+            $signtoolPath = Get-ChildItem $sdkBin -Directory |
+              Sort-Object Name -Descending |
+              ForEach-Object { Join-Path $_.FullName "x64\signtool.exe" } |
+              Where-Object { Test-Path $_ } |
               Select-Object -First 1
           }
-          if (-not $signtool) {
+          if (-not $signtoolPath) {
             throw "signtool.exe was not found in the Windows SDK."
           }
 
+          Write-Host "Using signtool at $signtoolPath."
           $certificate = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject $publisher `
@@ -193,16 +229,63 @@ jobs:
           Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
           Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
 
-          $signtoolPath = if ($signtool -is [System.Management.Automation.CommandInfo]) {
-            $signtool.Source
-          } else {
-            $signtool.FullName
-          }
           & $signtoolPath sign /fd SHA256 /s My /sha1 $certificate.Thumbprint $signedPackage
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signing failed with exit code $LASTEXITCODE."
           }
+
+      - name: Run Windows App Certification Kit
+        timeout-minutes: 20
+        shell: pwsh
+        run: |
+          $appcert = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\App Certification Kit\appcert.exe"
+          if (-not (Test-Path $appcert)) {
+            throw "Windows App Certification Kit was not found at $appcert."
+          }
+          $signedPackage = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.msix"
+          $report = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-WACK.xml"
+
+          & $appcert reset
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows App Certification Kit could not reset its test state."
+          }
+          & $appcert test -appxpackagepath $signedPackage -reportoutputpath $report
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows App Certification Kit reported package validation failures."
+          }
+          if (-not (Test-Path $report)) {
+            throw "Windows App Certification Kit completed without creating its report."
+          }
+
+      - name: Upload Windows App Certification Kit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rizzbase-studio-wack-report
+          path: ${{ runner.temp }}/RizzbaseStudio-WACK*
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Install signed MSIX package
+        timeout-minutes: 5
+        env:
+          STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
+        shell: pwsh
+        run: |
+          $identity = $env:STORE_IDENTITY_NAME
+          if ([string]::IsNullOrWhiteSpace($identity)) {
+            $identity = "RizzbaseStudio.LocalTest"
+          }
+          $signedPackage = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.msix"
+          if (-not (Test-Path $signedPackage)) {
+            throw "The signed validation package was not created."
+          }
+
           Write-Host "Installing signed MSIX package."
+          $existingPackage = Get-AppxPackage -Name $identity
+          if ($existingPackage) {
+            Remove-AppxPackage -Package $existingPackage.PackageFullName
+          }
           Add-AppxPackage -Path $signedPackage
           $package = Get-AppxPackage -Name $identity
           if (-not $package) {
@@ -251,5 +334,6 @@ jobs:
           path: |
             studio/build/bin/*.exe
             studio/build/bin/*.msix
+            ${{ runner.temp }}/RizzbaseStudio-WACK.xml
           if-no-files-found: error
           retention-days: 7
