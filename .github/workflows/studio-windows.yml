@@ -234,11 +234,14 @@ jobs:
           Write-Host "Trusting the temporary signing certificate as a root."
           $rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new(
             [System.Security.Cryptography.X509Certificates.StoreName]::Root,
-            [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+            [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine
           )
           try {
+            Write-Host "Opening the local-machine root store."
             $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+            Write-Host "Adding the temporary certificate to the root store."
             $rootStore.Add($certificate)
+            Write-Host "The temporary root certificate is trusted."
           } finally {
             $rootStore.Close()
           }
