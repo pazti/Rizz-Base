@@ -38,6 +38,21 @@ to submit to Partner Center. Run the workflow manually with the reserved
 identity, publisher, publisher display name, and version to produce a
 submission-ready unsigned MSIX.
 
+## Capabilities and Store assets
+
+The package declares only `runFullTrust`, which is required to run the Wails
+desktop executable. Studio opens and saves Projects and backups through
+user-initiated file dialogs; it does not request `broadFileSystemAccess` or
+`internetClient`, and does not start a helper engine or network service. In
+certification notes, explain that full trust is needed for the native Wails
+window and embedded Go engine, while project files remain on-device at paths
+chosen by the user.
+
+The package's square logos are generated from the official dark Rizzbase mark
+with its teal accent. Use the brand wordmark and teal-on-dark palette in Store
+listing screenshots as well; capture the actual Studio UI with a throwaway
+Project containing no personal data.
+
 ## Partner Center checklist
 
 1. Register and complete identity verification for a Microsoft Partner Center
@@ -46,8 +61,10 @@ submission-ready unsigned MSIX.
 3. Copy the exact package identity name, publisher, and publisher display name
    from the app's identity details into the workflow inputs.
 4. Add `https://rizz-base.vercel.app/privacy/` as the Store privacy-policy URL.
-5. Upload the unsigned MSIX generated with the reserved identity, provide
-   Store listing screenshots and disclosures, and submit for certification.
+5. Capture real Studio screenshots with a throwaway Project, using the official
+   wordmark and teal-on-dark brand styling. Do not include personal data.
+6. Upload the unsigned MSIX generated with the reserved identity, provide the
+   screenshots and required disclosures, and submit for certification.
 
 Account registration, identity verification, name reservation, and Store
 submission require the account owner's actions in Partner Center.
