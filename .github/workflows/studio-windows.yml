@@ -234,8 +234,14 @@ jobs:
           Write-Host "Exporting and trusting the temporary signing certificate."
           $certificateFile = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.cer"
           Export-Certificate -Cert $certificate -FilePath $certificateFile | Out-Null
-          Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
-          Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
+          & certutil.exe -f -user -addstore Root $certificateFile
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not trust the temporary signing certificate as a root."
+          }
+          & certutil.exe -f -user -addstore TrustedPeople $certificateFile
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not trust the temporary signing certificate for package installation."
+          }
 
           Write-Host "Signing the MSIX package."
           & $signtoolPath sign /fd SHA256 /s My /sha1 $certificate.Thumbprint $signedPackage
