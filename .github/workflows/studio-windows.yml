@@ -107,6 +107,8 @@ jobs:
 
           $executable = "studio/build/bin/Rizzbase Studio.exe"
           $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $executable))
+          Write-Host "Windows version-resource strings:"
+          $versionInfo | Format-List CompanyName, ProductName, ProductVersion, FileDescription | Out-String | Write-Host
           $expectedMetadata = @{
             CompanyName = "Rizzbase"
             ProductName = "Rizzbase Studio"
