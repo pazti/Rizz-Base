@@ -106,31 +106,23 @@ jobs:
           }
 
           $executable = "studio/build/bin/Rizzbase Studio.exe"
-          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $executable))
-          Write-Host "Windows version-resource strings:"
-          $versionInfo | Format-List CompanyName, ProductName, ProductVersion, FileDescription | Out-String | Write-Host
-          $expectedMetadata = @{
-            CompanyName = "Rizzbase"
-            ProductName = "Rizzbase Studio"
-            ProductVersion = "1.0.0.0"
-          }
-          foreach ($property in $expectedMetadata.Keys) {
-            if ($versionInfo.$property -ne $expectedMetadata[$property]) {
-              throw "Windows executable $property is '$($versionInfo.$property)' instead of '$($expectedMetadata[$property])'."
+          $versionResource = [System.Text.Encoding]::Unicode.GetString(
+            [System.IO.File]::ReadAllBytes((Resolve-Path $executable))
+          )
+          foreach ($value in @(
+            "VS_VERSION_INFO",
+            "StringFileInfo",
+            "CompanyName",
+            "Rizzbase",
+            "ProductName",
+            "Rizzbase Studio",
+            "ProductVersion",
+            "1.0.0.0"
+          )) {
+            if (-not $versionResource.Contains($value)) {
+              throw "The Windows executable is missing version-resource data '$value'."
             }
           }
-
-      - name: Upload Windows branding diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rizzbase-studio-branding-diagnostics
-          path: |
-            studio/build/bin/Rizzbase Studio.exe
-            studio/build/windows/info.json
-            studio/build/windows/icon.ico
-          if-no-files-found: warn
-          retention-days: 7
 
       - name: Package Microsoft Store MSIX
         env:
