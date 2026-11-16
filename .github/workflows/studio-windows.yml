@@ -188,7 +188,7 @@ jobs:
           Stop-Process -Id $process.Id -Force
 
       - name: Sign MSIX package for local validation
-        timeout-minutes: 2
+        timeout-minutes: 5
         env:
           STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
           STORE_PUBLISHER: ${{ github.event.inputs.publisher }}
@@ -226,19 +226,23 @@ jobs:
           }
 
           Write-Host "Using signtool at $signtoolPath."
+          Write-Host "Creating a temporary signing certificate."
           $certificate = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject $publisher `
             -CertStoreLocation "Cert:\CurrentUser\My"
+          Write-Host "Exporting and trusting the temporary signing certificate."
           $certificateFile = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.cer"
           Export-Certificate -Cert $certificate -FilePath $certificateFile | Out-Null
           Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
           Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
 
+          Write-Host "Signing the MSIX package."
           & $signtoolPath sign /fd SHA256 /s My /sha1 $certificate.Thumbprint $signedPackage
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signing failed with exit code $LASTEXITCODE."
           }
+          Write-Host "The MSIX package was signed."
 
       - name: Run Windows App Certification Kit
         timeout-minutes: 20
