@@ -120,6 +120,18 @@ jobs:
             }
           }
 
+      - name: Upload Windows branding diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rizzbase-studio-branding-diagnostics
+          path: |
+            studio/build/bin/Rizzbase Studio.exe
+            studio/build/windows/info.json
+            studio/build/windows/icon.ico
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Package Microsoft Store MSIX
         env:
           STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
