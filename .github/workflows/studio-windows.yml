@@ -238,10 +238,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Could not trust the temporary signing certificate as a root."
           }
-          & certutil.exe -f -user -addstore TrustedPeople $certificateFile
-          if ($LASTEXITCODE -ne 0) {
-            throw "Could not trust the temporary signing certificate for package installation."
-          }
 
           Write-Host "Signing the MSIX package."
           & $signtoolPath sign /fd SHA256 /s My /sha1 $certificate.Thumbprint $signedPackage
