@@ -51,3 +51,11 @@ The web preview displays sample data, with file and mutation actions disabled.
 Launch the Wails app to use real local Projects. Studio dialogs support
 keyboard navigation: Tab stays within an open dialog, Escape closes it, and
 focus returns to the control that opened it.
+
+## Microsoft Store
+
+Studio uses the Go engine directly, so the engine is compiled into the app
+executable; users do not need a separate engine installation. Wails builds
+the Windows executable, and the Windows SDK packages it as MSIX. See the
+[Microsoft Store packaging guide](store/README.md) for Partner Center identity
+requirements and packaging instructions.

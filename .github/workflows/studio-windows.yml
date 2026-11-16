@@ -16,6 +16,24 @@ on:
       - "studio/**"
       - "vite.config.ts"
   workflow_dispatch:
+    inputs:
+      identityName:
+        description: Package identity name from Partner Center (leave empty for a test identity)
+        required: false
+        type: string
+      publisher:
+        description: Publisher from Partner Center (leave empty for a test identity)
+        required: false
+        type: string
+      publisherDisplayName:
+        description: Publisher display name from Partner Center (leave empty for a test identity)
+        required: false
+        type: string
+      version:
+        description: Four-part Store package version ending in .0
+        required: false
+        default: "1.0.0.0"
+        type: string
 
 permissions:
   contents: read
@@ -68,6 +86,41 @@ jobs:
         working-directory: studio
         run: wails build -platform windows/amd64 -nsis -webview2 download
 
+      - name: Package Microsoft Store MSIX
+        env:
+          STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
+          STORE_PUBLISHER: ${{ github.event.inputs.publisher }}
+          STORE_PUBLISHER_DISPLAY_NAME: ${{ github.event.inputs.publisherDisplayName }}
+          STORE_VERSION: ${{ github.event.inputs.version }}
+        shell: pwsh
+        run: |
+          $identity = $env:STORE_IDENTITY_NAME
+          $publisher = $env:STORE_PUBLISHER
+          $publisherDisplayName = $env:STORE_PUBLISHER_DISPLAY_NAME
+          $hasIdentity = -not [string]::IsNullOrWhiteSpace($identity)
+          $hasPublisher = -not [string]::IsNullOrWhiteSpace($publisher)
+          if ($hasIdentity -ne $hasPublisher) {
+            throw "Supply both Partner Center identity and publisher, or leave both empty for the test package."
+          }
+          if (-not $hasIdentity) {
+            $identity = "RizzbaseStudio.LocalTest"
+            $publisher = "CN=Rizzbase Studio Local Test"
+            $publisherDisplayName = "Rizzbase Studio Local Test"
+          } elseif ([string]::IsNullOrWhiteSpace($publisherDisplayName)) {
+            throw "Supply the Partner Center publisher display name when building a Store package."
+          }
+          $version = $env:STORE_VERSION
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            $version = "1.0.0.0"
+          }
+          pwsh -NoProfile -File studio/store/package-msix.ps1 `
+            -ExecutablePath "studio/build/bin/Rizzbase Studio.exe" `
+            -OutputPath "studio/build/bin/RizzbaseStudio.msix" `
+            -IdentityName $identity `
+            -Publisher $publisher `
+            -PublisherDisplayName $publisherDisplayName `
+            -Version $version
+
       - name: Install and launch on clean Windows runner
         shell: pwsh
         run: |
@@ -96,9 +149,81 @@ jobs:
           }
           Stop-Process -Id $process.Id -Force
 
+      - name: Sign, install, launch, and remove MSIX test package
+        env:
+          STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
+          STORE_PUBLISHER: ${{ github.event.inputs.publisher }}
+        shell: pwsh
+        run: |
+          $identity = $env:STORE_IDENTITY_NAME
+          $publisher = $env:STORE_PUBLISHER
+          $hasIdentity = -not [string]::IsNullOrWhiteSpace($identity)
+          $hasPublisher = -not [string]::IsNullOrWhiteSpace($publisher)
+          if ($hasIdentity -ne $hasPublisher) {
+            throw "Supply both Partner Center identity and publisher, or leave both empty for the test package."
+          }
+          if (-not $hasIdentity) {
+            $identity = "RizzbaseStudio.LocalTest"
+            $publisher = "CN=Rizzbase Studio Local Test"
+          }
+
+          $packagePath = (Resolve-Path "studio/build/bin/RizzbaseStudio.msix").Path
+          $signedPackage = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.msix"
+          Copy-Item $packagePath $signedPackage -Force
+
+          $sdkBin = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+          $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
+          if (-not $signtool) {
+            $signtool = Get-ChildItem $sdkBin -Filter "signtool.exe" -File -Recurse |
+              Where-Object { $_.FullName -match "\\x64\\signtool\.exe$" } |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1
+          }
+          if (-not $signtool) {
+            throw "signtool.exe was not found in the Windows SDK."
+          }
+
+          $certificate = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject $publisher `
+            -CertStoreLocation "Cert:\CurrentUser\My"
+          $certificateFile = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.cer"
+          Export-Certificate -Cert $certificate -FilePath $certificateFile | Out-Null
+          Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
+
+          $signtoolPath = if ($signtool -is [System.Management.Automation.CommandInfo]) {
+            $signtool.Source
+          } else {
+            $signtool.FullName
+          }
+          & $signtoolPath sign /fd SHA256 /s My /sha1 $certificate.Thumbprint $signedPackage
+          if ($LASTEXITCODE -ne 0) {
+            throw "MSIX signing failed with exit code $LASTEXITCODE."
+          }
+          Add-AppxPackage -Path $signedPackage
+
+          $package = Get-AppxPackage -Name $identity
+          if (-not $package) {
+            throw "The MSIX package was not installed."
+          }
+          $aumid = "$($package.PackageFamilyName)!RizzbaseStudio"
+          Start-Process explorer.exe -ArgumentList "shell:AppsFolder\$aumid"
+          Start-Sleep -Seconds 10
+          $process = Get-Process -Name "Rizzbase Studio" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $process) {
+            throw "Rizzbase Studio did not launch from the MSIX package."
+          }
+          Stop-Process -Id $process.Id -Force
+          Remove-AppxPackage -Package $package.PackageFullName
+          if (Get-AppxPackage -Name $identity) {
+            throw "The test MSIX package did not uninstall."
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: rizzbase-studio-windows
-          path: studio/build/bin/*.exe
+          path: |
+            studio/build/bin/*.exe
+            studio/build/bin/*.msix
           if-no-files-found: error
           retention-days: 7

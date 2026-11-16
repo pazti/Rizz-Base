@@ -209,8 +209,14 @@ Rizzbase Studio is the Wails desktop app for creating and opening local
 Projects, browsing and editing Lobbies and Yaps, and exporting JSON backups.
 It calls the Go engine directly and does not add a hosted database or account
 service. See the [Studio development guide](studio/README.md) for prerequisites
-and build instructions. The browser preview remains separate and cannot access
-local `.rizz` files.
+and build instructions. The Go engine is compiled into the Studio executable;
+users do not need to install an external engine binary to use Studio. The
+browser preview remains separate and cannot access local `.rizz` files.
+
+The [Microsoft Store packaging guide](studio/store/README.md) covers MSIX
+generation and Partner Center setup. The public
+[privacy policy](https://rizz-base.vercel.app/privacy/) describes data handling
+for Studio, the SDKs, command-line tools, and website.
 
 ## Reopen an existing Project
 

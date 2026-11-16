@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0B0F0E" />
+    <meta
+      name="description"
+      content="Rizzbase privacy policy for Rizzbase Studio, the SDKs, and the website."
+    />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rizz-base.vercel.app/privacy/" />
+    <link rel="icon" type="image/svg+xml" href="/brand/rizzbase-mark-light.svg" />
+    <title>Privacy Policy — Rizzbase</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        color: #1A1D1C;
+        background: #F7F6F3;
+        font-synthesis: none;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-width: 320px;
+        background-image:
+          linear-gradient(rgba(11, 15, 14, .035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(11, 15, 14, .035) 1px, transparent 1px);
+        background-size: 28px 28px;
+      }
+      a { color: #167864; text-underline-offset: 3px; }
+      a:focus-visible { outline: 2px solid #22957E; outline-offset: 3px; }
+      header {
+        padding: 22px max(24px, calc((100vw - 960px) / 2));
+        background: #0B0F0E;
+        border-bottom: 3px solid #38BFA2;
+      }
+      header img { display: block; width: 164px; height: auto; }
+      main {
+        width: min(100% - 40px, 840px);
+        margin: 56px auto 80px;
+        padding: clamp(24px, 5vw, 56px);
+        background: #fff;
+        border: 1px solid #D9DEDB;
+        box-shadow: 0 16px 42px rgba(11, 15, 14, .08);
+      }
+      .eyebrow {
+        color: #167864;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+      h1, h2 { font-family: Manrope, "Segoe UI", Arial, sans-serif; }
+      h1 { margin: 10px 0 8px; font-size: clamp(36px, 7vw, 56px); letter-spacing: -.055em; }
+      h2 { margin: 34px 0 10px; font-size: 21px; letter-spacing: -.025em; }
+      p, li { color: #424946; font-size: 15px; line-height: 1.75; }
+      ul { padding-left: 22px; }
+      .updated { color: #6F7774; font-size: 13px; }
+      .notice {
+        margin: 28px 0;
+        padding: 16px 18px;
+        background: #EFF8F5;
+        border-left: 3px solid #38BFA2;
+      }
+      .notice p { margin: 0; }
+      footer {
+        padding: 22px;
+        color: #A8B1AD;
+        background: #0B0F0E;
+        text-align: center;
+        font-size: 12px;
+      }
+      footer a { color: #A5DDD0; }
+      @media (max-width: 560px) {
+        main { width: min(100% - 24px, 840px); margin: 24px auto 40px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/" aria-label="Rizzbase home">
+        <img src="/brand/rizzbase-wordmark-on-dark.svg" alt="Rizzbase" />
+      </a>
+    </header>
+    <main>
+      <span class="eyebrow">Privacy · Local first</span>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: November 16, 2026</p>
+
+      <div class="notice">
+        <p>Rizzbase Studio stores your Projects on your device. It does not send your Project contents or passphrase to Rizzbase.</p>
+      </div>
+
+      <p>This policy describes Rizzbase Studio, the Rizzbase SDKs and command-line tools, and the Rizzbase website at <a href="https://rizz-base.vercel.app/">rizz-base.vercel.app</a>.</p>
+
+      <h2>Information handled by the apps</h2>
+      <p>Rizzbase does not require an account and does not operate a hosted database. Studio opens and changes the local files you select. Project data is encrypted in the <code>.rizz</code> file on your device. Your passphrase is held in app memory while a Project is open and is discarded when it is closed or Studio exits.</p>
+      <p>If you export a JSON backup, that backup contains decrypted Project data. You choose where to save and how to protect it. The SDKs and command-line tools likewise read and write files on the machine where you run them. The Go engine is included in the Studio application; Studio does not need to fetch a separate engine binary to handle your Projects.</p>
+      <p>Studio, the SDKs, and the command-line tools do not intentionally collect analytics or transmit Project contents, passphrases, or backups to Rizzbase. Keep in mind that other software on your device, including operating-system backup or security tools, may separately access files according to its own settings.</p>
+
+      <h2>Website and hosting</h2>
+      <p>The website's interactive preview uses sample data and does not connect to your local Projects. The site stores your light/dark theme preference in your browser's local storage. The site does not use Rizzbase-operated advertising or analytics trackers.</p>
+      <p>The website is hosted by Vercel. When your browser requests a page or asset, Vercel may process technical request information such as your IP address, browser details, and request time for delivery, security, and service operation, under <a href="https://vercel.com/legal/privacy-policy">Vercel's privacy policy</a>. Website pages may load fonts from Google Fonts; your browser may send technical connection information to Google when it requests those fonts. See <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</p>
+
+      <h2>Sharing and retention</h2>
+      <p>Rizzbase does not sell personal information. We do not receive Project contents through the apps. We do not maintain user accounts or an application database containing your personal information. Hosting-provider request logs are handled and retained by the provider under its own policies.</p>
+
+      <h2>Your choices</h2>
+      <p>You control local Project files, backups, and the browser's saved theme preference. You can remove the theme preference using your browser's site-data settings. Protect exported JSON backups because they are not encrypted by Rizzbase.</p>
+
+      <h2>Children</h2>
+      <p>Rizzbase is developer software and is not designed to collect information from children. The apps do not ask users to provide personal information to Rizzbase.</p>
+
+      <h2>Changes and contact</h2>
+      <p>We may update this policy when the products or their data practices change. The latest version will be available at this URL with its updated date. For a privacy question, contact the repository owner through <a href="https://github.com/pazti/Rizz-Base">the Rizzbase GitHub repository</a>. Please do not include passphrases, Project files, or other sensitive information in a public issue.</p>
+    </main>
+    <footer><a href="/">Rizzbase</a> · Your data stays on your machine.</footer>
+  </body>
+</html>

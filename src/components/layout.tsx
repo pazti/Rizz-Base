@@ -22,7 +22,7 @@ export function Header({ theme, toggle, go }: PageProps) {
 }
 
 export function Footer({ go }: { go: Go }) {
-  return <footer><Logo onClick={() => go("home")} onDark /><p>© 2026 Rizzbase. Made with zero chill.</p><div><button onClick={() => go("docs")}>Docs</button><a href={repositoryUrl} target="_blank" rel="noreferrer">GitHub</a><span>LOCAL-FIRST V1</span></div></footer>;
+  return <footer><Logo onClick={() => go("home")} onDark /><p>© 2026 Rizzbase. Made with zero chill.</p><div><button onClick={() => go("docs")}>Docs</button><a href="/privacy/">Privacy</a><a href={repositoryUrl} target="_blank" rel="noreferrer">GitHub</a><span>LOCAL-FIRST V1</span></div></footer>;
 }
 
 export function Sidebar({ active, go, theme }: { active: string; go: Go; theme: Theme }) {
