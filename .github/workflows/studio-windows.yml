@@ -190,6 +190,7 @@ jobs:
           $certificateFile = Join-Path $env:RUNNER_TEMP "RizzbaseStudio-test.cer"
           Export-Certificate -Cert $certificate -FilePath $certificateFile | Out-Null
           Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
+          Import-Certificate -FilePath $certificateFile -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
 
           $signtoolPath = if ($signtool -is [System.Management.Automation.CommandInfo]) {
             $signtool.Source
