@@ -150,6 +150,7 @@ jobs:
           Stop-Process -Id $process.Id -Force
 
       - name: Sign, install, launch, and remove MSIX test package
+        timeout-minutes: 5
         env:
           STORE_IDENTITY_NAME: ${{ github.event.inputs.identityName }}
           STORE_PUBLISHER: ${{ github.event.inputs.publisher }}
@@ -201,13 +202,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signing failed with exit code $LASTEXITCODE."
           }
+          Write-Host "Installing signed MSIX package."
           Add-AppxPackage -Path $signedPackage
 
           $package = Get-AppxPackage -Name $identity
           if (-not $package) {
             throw "The MSIX package was not installed."
           }
+          Write-Host "Installed package $($package.PackageFullName)."
           $aumid = "$($package.PackageFamilyName)!RizzbaseStudio"
+          Write-Host "Launching packaged app $aumid."
           Start-Process explorer.exe -ArgumentList "shell:AppsFolder\$aumid"
           Start-Sleep -Seconds 10
           $process = Get-Process -Name "Rizzbase Studio" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -215,6 +219,7 @@ jobs:
             throw "Rizzbase Studio did not launch from the MSIX package."
           }
           Stop-Process -Id $process.Id -Force
+          Write-Host "Removing installed test package."
           Remove-AppxPackage -Package $package.PackageFullName
           if (Get-AppxPackage -Name $identity) {
             throw "The test MSIX package did not uninstall."
