@@ -74,12 +74,18 @@ jobs:
           echo "RIZZBASE_INCOMPATIBLE_BINARY=$RUNNER_TEMP/rizzbase-incompatible" >> "$GITHUB_ENV"
           echo "RIZZBASE_PROTOCOL_ERROR_BINARY=$RUNNER_TEMP/rizzbase-protocol-error" >> "$GITHUB_ENV"
           echo "RIZZBASE_NONZERO_BINARY=$RUNNER_TEMP/rizzbase-nonzero" >> "$GITHUB_ENV"
+      - name: Test Go SDK
+        run: go test -race ./...
+        working-directory: sdk/go
+      - name: Run Go conformance fixtures
+        run: go run ./cmd/conformance > "$RUNNER_TEMP/go-conformance.json"
+        working-directory: sdk/go
       - name: Run Node conformance fixtures
         run: node conformance/node-runner.cjs > "$RUNNER_TEMP/node-conformance.json"
       - name: Run Python SDK conformance fixtures
         run: python3 conformance/python-runner.py > "$RUNNER_TEMP/python-conformance.json"
       - name: Compare normalized conformance results
-        run: diff -u "$RUNNER_TEMP/node-conformance.json" "$RUNNER_TEMP/python-conformance.json"
+        run: python3 conformance/compare.py "$RUNNER_TEMP/node-conformance.json" "$RUNNER_TEMP/python-conformance.json" "$RUNNER_TEMP/go-conformance.json"
       - name: Test shell installer
         run: |
           bash -n install.sh

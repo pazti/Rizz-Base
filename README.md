@@ -36,7 +36,7 @@
 - **Small, transparent scope.** Rizzbase is a local file library, not a
   realtime cloud platform. Queries scan a Lobby in memory; there are no indexes.
 
-V1 includes the Go engine and CLI, TypeScript/Node.js and Python SDKs,
+V1 includes the Go engine and CLI, TypeScript/Node.js, Python, and Go SDKs,
 Project/Lobby/Yap operations, in-memory filters and ordering, and JSON
 export/restore. The React product UI is a preview and is not connected to
 local database files.
@@ -55,7 +55,7 @@ local database files.
 </p>
 
 - **Core:** Go engine and CLI; encrypted Projects use AES-256-GCM.
-- **SDKs:** Node.js with TypeScript, plus Python.
+- **SDKs:** Node.js with TypeScript, plus Python and Go process clients.
 - **Desktop:** Wails app with a React interface.
 - **Web preview:** React, Vite, and Tailwind CSS; it uses sample data and
   cannot access local `.rizz` files.
@@ -113,21 +113,22 @@ python -m pip install rizzbase
 
 See [engine installation](docs/installation.md) for version pinning, manual
 binary downloads, and platform details. Binary selection is configurable in
-each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, then both check
-`RIZZBASE_BINARY` and `PATH`.
+each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, and Go uses
+`WithBinaryPath`; all fall back to `RIZZBASE_BINARY` and `PATH`.
 
 ### Supported languages
 
 - **Node.js / TypeScript** — Node.js 20+, install with `npm install rizzbase`.
 - **Python** — Python 3.10+, install with `python -m pip install rizzbase`.
+- **Go** — Go 1.24+, install with `go get github.com/pazti/Rizz-Base/sdk/go`.
 
-The SDKs never download the engine automatically; provide it using the
-constructor option, `RIZZBASE_BINARY`, or `PATH`. See the [Node.js guide](docs/node-sdk.md),
-[Python SDK guide](python/README.md), [installers and conformance details](docs/installation.md),
+[SDKs](docs/sdks.md) never download the engine automatically; provide it using
+the constructor option, `RIZZBASE_BINARY`, or `PATH`. See the [Node.js guide](docs/node-sdk.md),
+[Python SDK guide](python/README.md), [Go SDK guide](sdk/go/README.md), [installers and conformance details](docs/installation.md),
 [conformance fixtures](conformance/README.md), and [runnable examples](examples/README.md).
 
-> **What's new since 1.1.0:** checksum-verifying engine installers, a Python
-> SDK, and safer engine discovery and compatibility checks. The SDKs still
+> **What's new since 1.1.0:** checksum-verifying engine installers, Python and
+> Go SDKs, and safer engine discovery and compatibility checks. The SDKs still
 > require an engine you install or build yourself.
 
 ## 60-second quick start

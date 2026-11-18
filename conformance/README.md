@@ -8,8 +8,9 @@ absolute paths.
 
 ## Run locally
 
-Build a compatible engine and the Node SDK, then run both adapters against the
-same fixtures:
+Build a compatible engine and the language SDKs, then run their adapters
+against the same fixtures. Each adapter runs the production SDK; compare their
+normalized results after all three runs:
 
 ```sh
 cd engine
@@ -17,28 +18,33 @@ go build -ldflags="-X main.version=1.1.0" -o /tmp/rizzbase ./cmd/rizzbase
 go build -ldflags="-X main.version=2.0.0" -o /tmp/rizzbase-incompatible ./cmd/rizzbase
 go build -o /tmp/rizzbase-protocol-error ./cmd/conformance-test-engine
 go build -ldflags="-X main.mode=nonzero" -o /tmp/rizzbase-nonzero ./cmd/conformance-test-engine
+export RIZZBASE_BINARY=/tmp/rizzbase
+export RIZZBASE_INCOMPATIBLE_BINARY=/tmp/rizzbase-incompatible
+export RIZZBASE_PROTOCOL_ERROR_BINARY=/tmp/rizzbase-protocol-error
+export RIZZBASE_NONZERO_BINARY=/tmp/rizzbase-nonzero
 cd ../sdk
 npm install
 npm run build
 cd ../python
 python3 -m pip install .
-cd ..
-export RIZZBASE_BINARY=/tmp/rizzbase
-export RIZZBASE_INCOMPATIBLE_BINARY=/tmp/rizzbase-incompatible
-export RIZZBASE_PROTOCOL_ERROR_BINARY=/tmp/rizzbase-protocol-error
-export RIZZBASE_NONZERO_BINARY=/tmp/rizzbase-nonzero
-node conformance/node-runner.cjs
-python3 conformance/python-runner.py
+cd ../sdk/go
+go test -race ./...
+go run ./cmd/conformance > /tmp/go-conformance.json
+cd ../..
+node conformance/node-runner.cjs > /tmp/node-conformance.json
+python3 conformance/python-runner.py > /tmp/python-conformance.json
+python3 conformance/compare.py /tmp/node-conformance.json /tmp/python-conformance.json /tmp/go-conformance.json
 ```
 
-The Node and Python runners call their production SDKs. Both adapters normalize
-timestamps, generated IDs, and machine-specific paths before producing
-per-step results.
+The Node, Python, and Go runners normalize timestamps, generated IDs, and
+machine-specific paths before producing per-step results. The Go runner lives
+in [`sdk/go/cmd/conformance/`](../sdk/go/cmd/conformance/) and accepts optional
+fixture paths; without arguments it runs every JSON fixture.
 
-CI runs both runners and compares their normalized results. Add scenario
-coverage by extending fixtures rather than duplicating expectations in
-language-specific tests. Keep fixture inputs offline and avoid assertions on
-timestamps, generated IDs, and machine-specific file paths.
+CI runs all three runners and compares their normalized JSON results. Add
+scenario coverage by extending fixtures rather than duplicating expectations
+in language-specific tests. Keep fixture inputs offline and avoid assertions
+on timestamps, generated IDs, and machine-specific file paths.
 
 The query fixture covers atomic `yap.bulkCreate` and `yap.query` cursor
-continuation, ensuring both SDKs share the batch and page response shapes.
+continuation, ensuring all SDKs share the batch and page response shapes.
