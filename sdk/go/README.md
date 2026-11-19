@@ -86,6 +86,16 @@ end in `.rizz`. All engine operations take a `context.Context`.
   `ListYaps`, `UpdateYap`, `DeleteYap`
 - Queries: `QueryYaps`, `QueryYapPage`, and immutable `Query` builder with
   `Where`, `OrderBy`, `Limit`, `After`, `Exec`, and `ExecPage`
+- Team sync: `GenerateSyncIdentity`, `InitializeSync`, `AttachSyncIdentity`,
+  `UpdateSyncMembers`, `UpdateSyncMembership`, `MergeSyncOperations`, and
+  `ResolveSyncConflict`. `Project.Sync` exposes the signed membership history,
+  encrypted operation journal, and unresolved conflicts for exchange by an
+  application-provided transport.
+
+`InitializeSync` returns a passphrase-sealed owner identity envelope; retain it
+securely for recovery. `GenerateSyncIdentity` returns a separately
+passphrase-sealed identity envelope suitable for transferring to the project
+owner when inviting a member.
 
 `GetYap` returns `json.RawMessage`; `Yap.Data` is also raw JSON so callers can
 decode into their own types. Creation and update methods accept ordinary Go
@@ -105,6 +115,13 @@ shorter).
 Errors are `*rizzbase.Error` values with stable `Code` constants. Busy-project
 details are available in `Context`. Exported JSON backups are plaintext,
 owner-only, limited to 64 MiB, and never overwrite an existing destination.
+The engine does not provide a network transport or server; applications must
+securely exchange membership manifests and operations. Conflicted Lobby/Yap
+reads fail with `CodeSyncConflict` until `ResolveSyncConflict` writes an
+explicit causally later choice. Membership history and operation journals are
+bounded and fail closed at their limits; compaction is not implemented. The
+project-file layer does not currently enforce an independent monotonic trust
+anchor, so restoring an older project file can roll back its local sync state.
 
 ## Conformance and tests
 

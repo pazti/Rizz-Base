@@ -36,9 +36,28 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.INVALID_BACKUP,
     ErrorCode.INVALID_CURSOR,
     ErrorCode.ENGINE_ERROR,
+    ErrorCode.SYNC_NOT_ENABLED,
+    ErrorCode.SYNC_IDENTITY_UNAVAILABLE,
+    ErrorCode.SYNC_ALREADY_ENABLED,
+    ErrorCode.SYNC_CONFLICT,
+    ErrorCode.SYNC_CONFLICT_NOT_FOUND,
+    ErrorCode.SYNC_INVALID_STATE,
+    ErrorCode.SYNC_HISTORY_LIMIT,
+    ErrorCode.SYNC_UNSUPPORTED_KEY,
+    ErrorCode.SYNC_STALE_MEMBERSHIP,
+    ErrorCode.SYNC_NOT_MEMBER,
+    ErrorCode.SYNC_PERMISSION_DENIED,
+    ErrorCode.SYNC_INVALID_MEMBERSHIP,
+    ErrorCode.SYNC_INVALID_SIGNATURE,
+    ErrorCode.SYNC_INVALID_OPERATION,
+    ErrorCode.SYNC_OPERATION_COLLISION,
+    ErrorCode.SYNC_MERGE_LIMIT,
+    ErrorCode.SYNC_INVALID_TRANSITION,
+    ErrorCode.SYNC_INVALID_CHECKPOINT,
+    ErrorCode.SYNC_INVALID_VALUE,
 }
 _READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query"}
-_WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete"}
+_WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "sync.initialize"}
 
 
 def _invalid(message: str):
@@ -407,6 +426,9 @@ class Rizzbase:
 
     def open(self):
         return self._request("open")["project"]
+
+    def initialize_sync(self):
+        return self._request("sync.initialize")["syncIdentity"]
 
     def doctor(self):
         """Return non-destructive project diagnostics; supplying a passphrase enables full validation."""

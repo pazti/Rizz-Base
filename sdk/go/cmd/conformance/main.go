@@ -265,6 +265,22 @@ func runOperation(operation string, args map[string]any, db *rizzbase.DB) (map[s
 	case "open":
 		project, err := db.Open(ctx)
 		return map[string]any{"project": project}, err
+	case "sync.initialize":
+		_, err := db.InitializeSync(ctx)
+		return map[string]any{}, err
+	case "sync.inspect":
+		project, err := db.Open(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if project.Sync == nil {
+			return map[string]any{"sync": map[string]int{}}, nil
+		}
+		return map[string]any{"sync": map[string]int{
+			"membershipCount": len(project.Sync.MembershipHistory),
+			"operationCount":  len(project.Sync.Operations),
+			"conflictCount":   len(project.Sync.Conflicts),
+		}}, nil
 	case "project.import":
 		project, err := db.ImportBackup(ctx, stringArg(args, "backupPath", ""))
 		return map[string]any{"project": project}, err

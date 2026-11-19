@@ -422,6 +422,52 @@ func readCounter(t *testing.T, path string) int {
 	return count
 }
 
+func TestSyncSDKIntegration(t *testing.T) {
+	binary := os.Getenv("RIZZBASE_BINARY")
+	if binary == "" {
+		t.Skip("set RIZZBASE_BINARY to run engine integration tests")
+	}
+	ctx := context.Background()
+	db, err := New(filepath.Join(t.TempDir(), "sync.rizz"), "sync-integration-passphrase", WithBinaryPath(binary))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Create(ctx, "sync integration"); err != nil {
+		t.Fatal(err)
+	}
+	identity, err := db.InitializeSync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if identity.ActorID == "" || len(identity.SigningPublicKey) == 0 {
+		t.Fatalf("InitializeSync() returned incomplete identity: %+v", identity)
+	}
+	if _, err := db.InitializeSync(ctx); !hasCode(err, CodeSyncAlreadyEnabled) {
+		t.Fatalf("second InitializeSync() error = %v, want SYNC_ALREADY_ENABLED", err)
+	}
+	lobby, err := db.CreateLobby(ctx, "sync notes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.CreateYap(ctx, lobby.ID, "entry", map[string]any{"value": "shared"}); err != nil {
+		t.Fatal(err)
+	}
+	project, err := db.Open(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project.Sync == nil || len(project.Sync.MembershipHistory) != 1 || len(project.Sync.Operations) != 2 {
+		t.Fatalf("Open() did not preserve sync state: %+v", project.Sync)
+	}
+	conflicts, err := db.MergeSyncOperations(ctx, nil)
+	if err != nil || len(conflicts) != 0 {
+		t.Fatalf("MergeSyncOperations(empty) = %v, %v", conflicts, err)
+	}
+	if _, err := db.MergeSyncOperations(ctx, []SyncOperation{{}}); !hasCode(err, CodeSyncInvalidOperation) {
+		t.Fatalf("invalid sync operation error = %v, want SYNC_INVALID_OPERATION", err)
+	}
+}
+
 func hasCode(err error, code ErrorCode) bool {
 	var sdkErr *Error
 	return errors.As(err, &sdkErr) && sdkErr.Code == code

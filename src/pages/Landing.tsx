@@ -41,6 +41,7 @@ export default function Landing({ theme, toggle, go }: PageProps) {
             <div className="button-row">
               <a className="btn" href="https://www.npmjs.com/package/rizzbase" target="_blank" rel="noreferrer">INSTALL SDK <Icon name="arrow" /></a>
               <a className="btn plain" href={repositoryUrl} target="_blank" rel="noreferrer"><Icon name="github" /> VIEW ON GITHUB</a>
+              <button className="btn secondary" onClick={() => go("docs")}>READ THE DOCS <Icon name="arrow" /></button>
             </div>
           </div>
           <div className="hero-product">

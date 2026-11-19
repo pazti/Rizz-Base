@@ -147,6 +147,72 @@ type Project struct {
 	Name      string           `json:"name"`
 	CreatedAt time.Time        `json:"createdAt"`
 	Lobbies   map[string]Lobby `json:"lobbies"`
+	Sync      *ProjectSync     `json:"sync,omitempty"`
+}
+
+type ProjectSync struct {
+	OwnerPublicKey    []byte               `json:"ownerPublicKey"`
+	MembershipHistory []MembershipManifest `json:"membershipHistory"`
+	Operations        []SyncOperation      `json:"operations"`
+	Conflicts         []SyncConflict       `json:"conflicts,omitempty"`
+}
+
+type SyncIdentityInfo struct {
+	ActorID             string `json:"actorId"`
+	SigningPublicKey    []byte `json:"signingPublicKey"`
+	EncryptionPublicKey []byte `json:"encryptionPublicKey"`
+	IdentityEnvelope    []byte `json:"identityEnvelope"`
+}
+
+type SyncMember struct {
+	SigningPublicKey    []byte `json:"signingPublicKey"`
+	EncryptionPublicKey []byte `json:"encryptionPublicKey"`
+	Role                string `json:"role"`
+}
+
+type MembershipMember struct {
+	ActorID             string `json:"actorId"`
+	SigningPublicKey    []byte `json:"signingPublicKey"`
+	EncryptionPublicKey []byte `json:"encryptionPublicKey"`
+	Role                string `json:"role"`
+	KeyEnvelope         struct {
+		Version            uint8  `json:"version"`
+		Epoch              uint64 `json:"epoch"`
+		EphemeralPublicKey []byte `json:"ephemeralPublicKey"`
+		Nonce              []byte `json:"nonce"`
+		Ciphertext         []byte `json:"ciphertext"`
+	} `json:"keyEnvelope"`
+}
+
+type MembershipManifest struct {
+	Version   uint8              `json:"version"`
+	ProjectID string             `json:"projectId"`
+	Epoch     uint64             `json:"epoch"`
+	OwnerID   string             `json:"ownerId"`
+	KeyDigest []byte             `json:"keyDigest"`
+	Members   []MembershipMember `json:"members"`
+	Signature []byte             `json:"signature"`
+}
+
+type SyncOperationID struct {
+	Actor    string `json:"actor"`
+	Sequence uint64 `json:"sequence"`
+}
+
+type SyncOperation struct {
+	ProjectID       string            `json:"projectId"`
+	MembershipEpoch uint64            `json:"membershipEpoch"`
+	ID              SyncOperationID   `json:"id"`
+	Key             string            `json:"key"`
+	Clock           map[string]uint64 `json:"clock"`
+	EncryptedValue  []byte            `json:"encryptedValue,omitempty"`
+	Deleted         bool              `json:"deleted,omitempty"`
+	Signature       []byte            `json:"signature,omitempty"`
+}
+
+type SyncConflict struct {
+	Key        string          `json:"key"`
+	Operations []SyncOperation `json:"operations"`
 }
 
 type Lobby struct {
@@ -200,18 +266,21 @@ type DoctorReport struct {
 }
 
 type engineResponse struct {
-	OK        *bool           `json:"ok"`
-	Project   *Project        `json:"project,omitempty"`
-	Lobby     *Lobby          `json:"lobby,omitempty"`
-	Lobbies   []Lobby         `json:"lobbies,omitempty"`
-	Yap       *Yap            `json:"yap,omitempty"`
-	Yaps      []Yap           `json:"yaps,omitempty"`
-	Page      *QueryPage      `json:"page,omitempty"`
-	Data      json.RawMessage `json:"data,omitempty"`
-	Doctor    *DoctorReport   `json:"doctor,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	ErrorCode string          `json:"errorCode,omitempty"`
-	Context   map[string]any  `json:"errorContext,omitempty"`
+	OK           *bool               `json:"ok"`
+	Project      *Project            `json:"project,omitempty"`
+	Lobby        *Lobby              `json:"lobby,omitempty"`
+	Lobbies      []Lobby             `json:"lobbies,omitempty"`
+	Yap          *Yap                `json:"yap,omitempty"`
+	Yaps         []Yap               `json:"yaps,omitempty"`
+	Page         *QueryPage          `json:"page,omitempty"`
+	Data         json.RawMessage     `json:"data,omitempty"`
+	Doctor       *DoctorReport       `json:"doctor,omitempty"`
+	SyncIdentity *SyncIdentityInfo   `json:"syncIdentity,omitempty"`
+	Membership   *MembershipManifest `json:"membership,omitempty"`
+	Conflicts    []SyncConflict      `json:"conflicts,omitempty"`
+	Error        string              `json:"error,omitempty"`
+	ErrorCode    string              `json:"errorCode,omitempty"`
+	Context      map[string]any      `json:"errorContext,omitempty"`
 }
 
 var readOperations = map[string]bool{
@@ -477,7 +546,13 @@ func knownEngineError(code string) ErrorCode {
 	switch ErrorCode(code) {
 	case CodeInvalidArgument, CodeAuthenticationFailed, CodeInvalidFormat, CodeProjectBusy,
 		CodeLobbyNotFound, CodeYapNotFound, CodeYapExists, CodeFileNotFound, CodeFileExists,
-		CodePermissionDenied, CodeInvalidBackup, CodeInvalidCursor, CodeEngineError:
+		CodePermissionDenied, CodeInvalidBackup, CodeInvalidCursor, CodeEngineError,
+		CodeSyncNotEnabled, CodeSyncIdentityUnavailable, CodeSyncAlreadyEnabled, CodeSyncConflict,
+		CodeSyncConflictNotFound, CodeSyncInvalidState, CodeSyncHistoryLimit, CodeSyncUnsupportedKey,
+		CodeSyncStaleMembership, CodeSyncNotMember, CodeSyncPermissionDenied,
+		CodeSyncInvalidMembership, CodeSyncInvalidSignature, CodeSyncInvalidOperation,
+		CodeSyncOperationCollision, CodeSyncMergeLimit, CodeSyncInvalidTransition,
+		CodeSyncInvalidCheckpoint, CodeSyncInvalidValue:
 		return ErrorCode(code)
 	default:
 		return CodeEngineError
@@ -494,7 +569,81 @@ func safeEngineMessage(message string) string {
 func isWriteOperation(operation string) bool {
 	return strings.HasPrefix(operation, "lobby.create") || strings.HasPrefix(operation, "lobby.delete") ||
 		strings.HasPrefix(operation, "yap.create") || strings.HasPrefix(operation, "yap.bulkCreate") ||
-		strings.HasPrefix(operation, "yap.update") || strings.HasPrefix(operation, "yap.delete")
+		strings.HasPrefix(operation, "yap.update") || strings.HasPrefix(operation, "yap.delete") ||
+		strings.HasPrefix(operation, "sync.initialize") || strings.HasPrefix(operation, "sync.identity.attach") ||
+		strings.HasPrefix(operation, "sync.members") || strings.HasPrefix(operation, "sync.membership") ||
+		strings.HasPrefix(operation, "sync.operations.merge") || strings.HasPrefix(operation, "sync.conflict.resolve")
+}
+
+func (db *DB) GenerateSyncIdentity(ctx context.Context, identityPassphrase string) (*SyncIdentityInfo, error) {
+	if identityPassphrase == "" {
+		return nil, invalid("Sync identity passphrase must not be empty.")
+	}
+	response, err := db.request(ctx, "sync.identity.generate", map[string]any{"passphrase": identityPassphrase})
+	if err != nil {
+		return nil, err
+	}
+	if response.SyncIdentity == nil {
+		return nil, sdkError(CodeEngineProtocolError, "Engine response omitted the sync identity.", nil)
+	}
+	return response.SyncIdentity, nil
+}
+
+func (db *DB) InitializeSync(ctx context.Context) (*SyncIdentityInfo, error) {
+	response, err := db.request(ctx, "sync.initialize", nil)
+	if err != nil {
+		return nil, err
+	}
+	if response.SyncIdentity == nil {
+		return nil, sdkError(CodeEngineProtocolError, "Engine response omitted the sync identity.", nil)
+	}
+	return response.SyncIdentity, nil
+}
+
+func (db *DB) AttachSyncIdentity(ctx context.Context, envelope []byte, identityPassphrase string) error {
+	_, err := db.request(ctx, "sync.identity.attach", map[string]any{
+		"identityEnvelope": envelope, "identityPassphrase": identityPassphrase,
+	})
+	return err
+}
+
+func (db *DB) UpdateSyncMembers(ctx context.Context, members []SyncMember) (*MembershipManifest, error) {
+	response, err := db.request(ctx, "sync.members.update", map[string]any{"members": members})
+	if err != nil {
+		return nil, err
+	}
+	if response.Membership == nil {
+		return nil, sdkError(CodeEngineProtocolError, "Engine response omitted the membership manifest.", nil)
+	}
+	return response.Membership, nil
+}
+
+func (db *DB) UpdateSyncMembership(ctx context.Context, membership MembershipManifest) error {
+	_, err := db.request(ctx, "sync.membership.update", map[string]any{"membership": membership})
+	return err
+}
+
+func (db *DB) MergeSyncOperations(ctx context.Context, operations []SyncOperation) ([]SyncConflict, error) {
+	response, err := db.request(ctx, "sync.operations.merge", map[string]any{"operations": operations})
+	if err != nil {
+		return nil, err
+	}
+	if response.Conflicts == nil {
+		return []SyncConflict{}, nil
+	}
+	return response.Conflicts, nil
+}
+
+func (db *DB) ResolveSyncConflict(ctx context.Context, operationKey string, value any, deleted bool) error {
+	fields := map[string]any{"operationKey": operationKey, "deleted": deleted}
+	if !deleted {
+		if _, err := json.Marshal(value); err != nil {
+			return invalid("Conflict resolution values must contain only JSON values.")
+		}
+		fields["data"] = value
+	}
+	_, err := db.request(ctx, "sync.conflict.resolve", fields)
+	return err
 }
 
 func (db *DB) CreateLobby(ctx context.Context, name string) (*Lobby, error) {

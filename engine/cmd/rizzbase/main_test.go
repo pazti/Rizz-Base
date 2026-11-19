@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"rizzbase/engine/core"
+	rizzsync "rizzbase/engine/sync"
 )
 
 func TestCLI(t *testing.T) {
@@ -66,6 +69,64 @@ func TestDoctorOperation(t *testing.T) {
 	}
 	if res.Doctor.ProjectValid == nil || !*res.Doctor.ProjectValid {
 		t.Fatalf("expected full project validation: %s", out.String())
+	}
+}
+
+func TestSyncCLIIdentityRosterAndCRUDFlow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sync-cli.rizz")
+	call := func(req request) response {
+		t.Helper()
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := run(bytes.NewReader(data), &out); err != nil {
+			t.Fatalf("%s failed: %v", req.Operation, err)
+		}
+		var res response
+		if err := json.Unmarshal(out.Bytes(), &res); err != nil || !res.OK {
+			t.Fatalf("%s returned invalid response: %s (%v)", req.Operation, out.String(), err)
+		}
+		return res
+	}
+
+	call(request{Operation: "create", Path: path, Name: "sync CLI", Passphrase: "owner-passphrase"})
+	member := call(request{Operation: "sync.identity.generate", Path: path, Passphrase: "member-passphrase"}).SyncIdentity
+	if member == nil || member.ActorID == "" || len(member.IdentityEnvelope) == 0 {
+		t.Fatal("identity generation omitted local identity information")
+	}
+	owner := call(request{Operation: "sync.initialize", Path: path, Passphrase: "owner-passphrase"}).SyncIdentity
+	if owner == nil || owner.ActorID == "" {
+		t.Fatal("sync initialization omitted owner identity")
+	}
+	manifest := call(request{
+		Operation:  "sync.members.update",
+		Path:       path,
+		Passphrase: "owner-passphrase",
+		Members: []core.ProjectSyncMember{{
+			SigningPublicKey:    member.SigningPublicKey,
+			EncryptionPublicKey: member.EncryptionPublicKey,
+			Role:                rizzsync.RoleEditor,
+		}},
+	}).Membership
+	if manifest == nil || manifest.Epoch != 2 || len(manifest.Members) != 2 {
+		t.Fatalf("member update did not return the signed roster: %+v", manifest)
+	}
+	call(request{
+		Operation:          "sync.identity.attach",
+		Path:               path,
+		Passphrase:         "owner-passphrase",
+		IdentityPassphrase: "member-passphrase",
+		IdentityEnvelope:   member.IdentityEnvelope,
+	})
+	if lobby := call(request{
+		Operation:  "lobby.create",
+		Path:       path,
+		Passphrase: "owner-passphrase",
+		Name:       "editor-write",
+	}).Lobby; lobby == nil || lobby.Name != "editor-write" {
+		t.Fatalf("attached editor identity could not write: %+v", lobby)
 	}
 }
 

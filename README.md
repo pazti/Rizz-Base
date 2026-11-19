@@ -216,7 +216,7 @@ browser preview remains separate and cannot access local `.rizz` files.
 
 The [Microsoft Store packaging guide](studio/store/README.md) covers MSIX
 generation and Partner Center setup. The public
-[privacy policy](https://rizz-base.vercel.app/privacy/) describes data handling
+[privacy policy](https://rizzbase.tech/privacy/) describes data handling
 for Studio, the SDKs, command-line tools, and website.
 
 ## Reopen an existing Project

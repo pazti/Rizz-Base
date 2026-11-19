@@ -13,6 +13,7 @@ import (
 	"rizzbase/engine/core"
 	rizzcrypto "rizzbase/engine/crypto"
 	"rizzbase/engine/storage"
+	rizzsync "rizzbase/engine/sync"
 )
 
 var version = "dev"
@@ -24,32 +25,43 @@ func init() {
 }
 
 type request struct {
-	Operation  string            `json:"operation"`
-	Path       string            `json:"path"`
-	BackupPath string            `json:"backupPath,omitempty"`
-	LobbyID    string            `json:"lobbyId,omitempty"`
-	YapID      string            `json:"yapId,omitempty"`
-	Name       string            `json:"name,omitempty"`
-	Data       json.RawMessage   `json:"data,omitempty"`
-	Yaps       []core.YapInput   `json:"yaps,omitempty"`
-	Passphrase string            `json:"passphrase"`
-	LockWaitMs int               `json:"lockWaitMs,omitempty"`
-	Query      core.QueryOptions `json:"query,omitempty"`
+	Operation          string                       `json:"operation"`
+	Path               string                       `json:"path"`
+	BackupPath         string                       `json:"backupPath,omitempty"`
+	LobbyID            string                       `json:"lobbyId,omitempty"`
+	YapID              string                       `json:"yapId,omitempty"`
+	Name               string                       `json:"name,omitempty"`
+	Data               json.RawMessage              `json:"data,omitempty"`
+	Yaps               []core.YapInput              `json:"yaps,omitempty"`
+	Passphrase         string                       `json:"passphrase"`
+	LockWaitMs         int                          `json:"lockWaitMs,omitempty"`
+	Query              core.QueryOptions            `json:"query,omitempty"`
+	IdentityPassphrase string                       `json:"identityPassphrase,omitempty"`
+	IdentityEnvelope   []byte                       `json:"identityEnvelope,omitempty"`
+	TrustedOwner       []byte                       `json:"trustedOwner,omitempty"`
+	OperationKey       string                       `json:"operationKey,omitempty"`
+	Deleted            bool                         `json:"deleted,omitempty"`
+	Members            []core.ProjectSyncMember     `json:"members,omitempty"`
+	Membership         *rizzsync.MembershipManifest `json:"membership,omitempty"`
+	Operations         []rizzsync.Operation         `json:"operations,omitempty"`
 }
 
 type response struct {
-	OK           bool                 `json:"ok"`
-	Project      *core.Project        `json:"project,omitempty"`
-	Lobby        *core.Lobby          `json:"lobby,omitempty"`
-	Lobbies      []core.Lobby         `json:"lobbies,omitempty"`
-	Yap          *core.Yap            `json:"yap,omitempty"`
-	Yaps         []core.Yap           `json:"yaps,omitempty"`
-	Page         *core.QueryPage      `json:"page,omitempty"`
-	Data         json.RawMessage      `json:"data,omitempty"`
-	Doctor       *storage.Diagnostics `json:"doctor,omitempty"`
-	Error        string               `json:"error,omitempty"`
-	ErrorCode    string               `json:"errorCode,omitempty"`
-	ErrorContext *storage.LockInfo    `json:"errorContext,omitempty"`
+	OK           bool                          `json:"ok"`
+	Project      *core.Project                 `json:"project,omitempty"`
+	Lobby        *core.Lobby                   `json:"lobby,omitempty"`
+	Lobbies      []core.Lobby                  `json:"lobbies,omitempty"`
+	Yap          *core.Yap                     `json:"yap,omitempty"`
+	Yaps         []core.Yap                    `json:"yaps,omitempty"`
+	Page         *core.QueryPage               `json:"page,omitempty"`
+	Data         json.RawMessage               `json:"data,omitempty"`
+	Doctor       *storage.Diagnostics          `json:"doctor,omitempty"`
+	SyncIdentity *core.ProjectSyncIdentityInfo `json:"syncIdentity,omitempty"`
+	Membership   *rizzsync.MembershipManifest  `json:"membership,omitempty"`
+	Conflicts    []rizzsync.Conflict           `json:"conflicts,omitempty"`
+	Error        string                        `json:"error,omitempty"`
+	ErrorCode    string                        `json:"errorCode,omitempty"`
+	ErrorContext *storage.LockInfo             `json:"errorContext,omitempty"`
 }
 
 func run(input io.Reader, output io.Writer) error {
@@ -74,7 +86,8 @@ func run(input io.Reader, output io.Writer) error {
 	}
 	for field := range fields {
 		switch field {
-		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query":
+		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query",
+			"identityPassphrase", "identityEnvelope", "trustedOwner", "operationKey", "deleted", "members", "membership", "operations":
 		default:
 			return errors.New("unknown request field")
 		}
@@ -93,6 +106,42 @@ func run(input io.Reader, output io.Writer) error {
 	case "doctor":
 		diagnostics := core.Diagnose(req.Path, req.Passphrase)
 		res.Doctor = &diagnostics
+	case "sync.identity.generate":
+		var identity core.ProjectSyncIdentityInfo
+		identity, err = core.GenerateProjectSyncIdentity(req.Passphrase)
+		res.SyncIdentity = &identity
+	case "sync.initialize":
+		var identity core.ProjectSyncIdentityInfo
+		identity, err = core.InitializeProjectSync(req.Path, req.Passphrase, time.Duration(req.LockWaitMs)*time.Millisecond)
+		res.SyncIdentity = &identity
+	case "sync.identity.attach":
+		err = core.AttachProjectSyncIdentityEnvelope(
+			req.Path,
+			req.Passphrase,
+			req.IdentityEnvelope,
+			req.IdentityPassphrase,
+			time.Duration(req.LockWaitMs)*time.Millisecond,
+		)
+	case "sync.members.update":
+		var membership rizzsync.MembershipManifest
+		membership, err = core.UpdateProjectMembers(req.Path, req.Passphrase, req.Members, time.Duration(req.LockWaitMs)*time.Millisecond)
+		res.Membership = &membership
+	case "sync.membership.update":
+		if req.Membership == nil {
+			return errors.New("sync.membership.update requires a membership manifest")
+		}
+		err = core.UpdateProjectMembership(req.Path, req.Passphrase, *req.Membership, time.Duration(req.LockWaitMs)*time.Millisecond)
+	case "sync.operations.merge":
+		res.Conflicts, err = core.MergeProjectSyncOperations(req.Path, req.Passphrase, req.Operations, time.Duration(req.LockWaitMs)*time.Millisecond)
+	case "sync.conflict.resolve":
+		err = core.ResolveProjectSyncConflict(
+			req.Path,
+			req.Passphrase,
+			req.OperationKey,
+			req.Data,
+			req.Deleted,
+			time.Duration(req.LockWaitMs)*time.Millisecond,
+		)
 	case "lobby.create":
 		var lobby core.Lobby
 		lobby, err = core.CreateLobby(req.Path, req.Passphrase, req.Name, time.Duration(req.LockWaitMs)*time.Millisecond)
@@ -195,6 +244,44 @@ func errorCode(err error) string {
 		return "INVALID_BACKUP"
 	case errors.Is(err, core.ErrYapExists):
 		return "YAP_EXISTS"
+	case errors.Is(err, core.ErrProjectSyncNotEnabled):
+		return "SYNC_NOT_ENABLED"
+	case errors.Is(err, core.ErrProjectSyncIdentityUnavailable):
+		return "SYNC_IDENTITY_UNAVAILABLE"
+	case errors.Is(err, core.ErrProjectSyncAlreadyEnabled):
+		return "SYNC_ALREADY_ENABLED"
+	case errors.Is(err, core.ErrProjectSyncConflict):
+		return "SYNC_CONFLICT"
+	case errors.Is(err, core.ErrProjectSyncConflictNotFound):
+		return "SYNC_CONFLICT_NOT_FOUND"
+	case errors.Is(err, core.ErrInvalidProjectSyncState):
+		return "SYNC_INVALID_STATE"
+	case errors.Is(err, core.ErrProjectMembershipHistoryLimit):
+		return "SYNC_HISTORY_LIMIT"
+	case errors.Is(err, core.ErrUnsupportedSyncOperationKey):
+		return "SYNC_UNSUPPORTED_KEY"
+	case errors.Is(err, rizzsync.ErrStaleMembership):
+		return "SYNC_STALE_MEMBERSHIP"
+	case errors.Is(err, rizzsync.ErrNotMember):
+		return "SYNC_NOT_MEMBER"
+	case errors.Is(err, rizzsync.ErrPermissionDenied):
+		return "SYNC_PERMISSION_DENIED"
+	case errors.Is(err, rizzsync.ErrInvalidMembership):
+		return "SYNC_INVALID_MEMBERSHIP"
+	case errors.Is(err, rizzsync.ErrInvalidMembershipSignature):
+		return "SYNC_INVALID_SIGNATURE"
+	case errors.Is(err, rizzsync.ErrInvalidOperation):
+		return "SYNC_INVALID_OPERATION"
+	case errors.Is(err, rizzsync.ErrOperationCollision):
+		return "SYNC_OPERATION_COLLISION"
+	case errors.Is(err, rizzsync.ErrMergeLimit):
+		return "SYNC_MERGE_LIMIT"
+	case errors.Is(err, rizzsync.ErrMembershipTransition):
+		return "SYNC_INVALID_TRANSITION"
+	case errors.Is(err, rizzsync.ErrInvalidMembershipCheckpoint):
+		return "SYNC_INVALID_CHECKPOINT"
+	case errors.Is(err, rizzsync.ErrInvalidOperationValue):
+		return "SYNC_INVALID_VALUE"
 	case errors.Is(err, os.ErrNotExist):
 		return "FILE_NOT_FOUND"
 	case errors.Is(err, os.ErrExist):
