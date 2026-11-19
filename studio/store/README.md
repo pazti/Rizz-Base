@@ -67,7 +67,7 @@ throwaway Project containing no personal data.
 2. Reserve **Rizzbase Studio** (if available) and complete the Store listing.
 3. Copy the exact package identity name, publisher, and publisher display name
    from the app's identity details into the workflow inputs.
-4. Add `https://rizz-base.vercel.app/privacy/` as the Store privacy-policy URL.
+4. Add `https://rizzbase.tech/privacy/` as the Store privacy-policy URL.
 5. Capture real Studio screenshots with a throwaway Project, using the official
    wordmark and teal-on-dark brand styling. Do not include personal data.
 6. Upload the unsigned MSIX generated with the reserved identity, provide the

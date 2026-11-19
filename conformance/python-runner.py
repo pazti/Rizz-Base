@@ -139,6 +139,16 @@ def run_fixture(fixture_path):
                     result = {"project": database.create(args["name"])}
                 elif operation == "open":
                     result = {"project": database.open()}
+                elif operation == "sync.initialize":
+                    database.initialize_sync()
+                    result = {}
+                elif operation == "sync.inspect":
+                    sync = database.open().get("sync") or {}
+                    result = {"sync": {
+                        "membershipCount": len(sync.get("membershipHistory", [])),
+                        "operationCount": len(sync.get("operations", [])),
+                        "conflictCount": len(sync.get("conflicts", [])),
+                    }}
                 elif operation == "project.import":
                     result = {"project": database.import_backup(args["backupPath"])}
                 elif operation == "project.export":

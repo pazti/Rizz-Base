@@ -1,8 +1,7 @@
 # SDKs in other languages
 
-**Node.js and Python** are production-ready. Install the engine separately;
-neither SDK downloads it. Each SDK owns only its language
-API and binary resolution; both use the same engine protocol of one JSON
+Install the engine separately; no SDK downloads it. Each SDK owns its language
+API and binary resolution, and all use the same engine protocol of one JSON
 request on stdin and one JSON response on stdout. The CLI reference is the
 behavioral specification.
 
@@ -12,10 +11,11 @@ behavioral specification.
 | --- | --- | --- |
 | Node.js / TypeScript | Stable (V1) | `npm install rizzbase`, see Node.js SDK page |
 | Python | Stable (V1) | Install from `python/`; Python 3.10+; no auto-download |
-| Go | Engine-native | Import `rizzbase/engine/core` directly, no CLI hop needed |
+| Go | Implemented (V1) | Process SDK, `go get github.com/pazti/Rizz-Base/sdk/go`; see [Go SDK](../sdk/go/README.md) |
 
-The Python package is under [`python/`](../python/README.md). Both SDKs use
-the same offline scenarios in [`conformance/`](../conformance/README.md).
+The Python package is under [`python/`](../python/README.md). The Node.js,
+Python, and Go SDKs share the same engine protocol and offline fixtures in
+[`conformance/`](../conformance/README.md).
 
 ## Engine and project-format compatibility
 
@@ -24,15 +24,25 @@ every future engine release will retain every behavior:
 
 | SDK | Supported engine versions | Project formats |
 | --- | --- | --- |
-| Node.js / TypeScript 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
-| Python 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+| Node.js / TypeScript | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+| Python | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+| Go | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
 
-Both SDKs reject engines below `1.1.0`, engine major version `2` or later, and
+All SDKs reject engines below `1.1.0`, engine major version `2` or later, and
 any engine that does not report format `1` through `--version`. The V1 engine
 reads and writes only V1 project envelopes. There is no automatic file-format
 migration; back up a project before changing engine versions. A new format
 requires an explicit compatibility decision and tests before its engine or SDK
 support is published.
+
+## Go API
+
+The Go client is a process-based SDK under [`sdk/go/`](../sdk/go/README.md).
+Create a client with `rizzbase.New(path, passphrase, options...)`; methods use
+`context.Context` and return typed `*rizzbase.Error` values. It includes
+Project, Lobby, Yap, query/cursor, diagnostics, and JSON backup operations.
+The Go integration tests use `RIZZBASE_BINARY` to test against the production
+engine.
 
 ## Python API
 

@@ -107,6 +107,20 @@ async function runFixture(fixturePath) {
           case "open":
             result = { project: await db.open() };
             break;
+          case "sync.initialize":
+            await db.initializeSync();
+            result = {};
+            break;
+          case "sync.inspect": {
+            const project = await db.open();
+            const sync = project.sync;
+            result = { sync: {
+              membershipCount: sync?.membershipHistory.length ?? 0,
+              operationCount: sync?.operations.length ?? 0,
+              conflictCount: sync?.conflicts?.length ?? 0,
+            } };
+            break;
+          }
           case "project.import":
             result = { project: await db.importBackup(args.backupPath) };
             break;
@@ -201,7 +215,7 @@ async function runFixture(fixturePath) {
 async function main() {
   const files = process.argv.slice(2);
   const fixtures = files.length
-    ? files.map(resolve)
+    ? files.map(file => resolve(file))
     : (await (await import("node:fs/promises")).readdir(fixturesDirectory))
       .filter(name => name.endsWith(".json"))
       .sort()

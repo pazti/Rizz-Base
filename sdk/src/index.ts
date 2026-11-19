@@ -3,14 +3,14 @@ import { dirname, join, resolve } from "node:path";
 import { ensureCompatibleEngine, resolveBinary } from "./binary.js";
 import { RizzbaseError } from "./errors.js";
 import { callEngine } from "./transport.js";
-import type { DoctorReport, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
+import type { DoctorReport, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncIdentityInfo, Yap, YapInput } from "./types.js";
 export { RizzbaseError } from "./errors.js";
 export type { ErrorCode } from "./errors.js";
-export type { DoctorReport, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
+export type { DoctorReport, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, ProjectSync, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncConflict, SyncIdentityInfo, SyncOperation, Yap, YapInput } from "./types.js";
 
 const MAX_BACKUP_SIZE = 64 << 20;
 const READ_OPERATIONS = new Set(["open", "lobby.list", "yap.get", "yap.list", "yap.query"]);
-const WRITE_OPERATIONS = new Set(["lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete"]);
+const WRITE_OPERATIONS = new Set(["lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "sync.initialize"]);
 const sleep = (delayMs: number) => new Promise(resolve => setTimeout(resolve, delayMs));
 
 function normalizeRetryOptions(options: RetryOptions | undefined, timeoutMs: number) {
@@ -143,6 +143,9 @@ export class Rizzbase {
 
   async create(name: string): Promise<Project> { return (await this.request("create", { name })).project as Project; }
   async open(): Promise<Project> { return (await this.request("open")).project as Project; }
+  async initializeSync(): Promise<SyncIdentityInfo> {
+    return (await this.request("sync.initialize")).syncIdentity as SyncIdentityInfo;
+  }
   async doctor(): Promise<DoctorReport> { return (await this.request("doctor")).doctor as DoctorReport; }
   async export(backupPath: string): Promise<void> {
     if (typeof backupPath !== "string" || !backupPath.endsWith(".json")) invalid("Invalid backup path: expected a .json file.");

@@ -1,9 +1,12 @@
 {
-  "title": "Rizzbase — Local-first encrypted database for Node.js",
+  "title": "Rizzbase — Local-First Encrypted Database SDKs",
   "language": "en",
-  "description": "Rizzbase is a local-first Node.js database that stores encrypted Projects in .rizz files on your device.",
+  "description": "Rizzbase provides local-first encrypted database SDKs for Node.js, Python, and Go. Store structured data in .rizz files on your device, without a hosted database.",
   "robots": {
     "index": true
+  },
+  "openGraph": {
+    "image": "https://rizzbase.tech/favicon-512.png"
   },
   "accessibility": {
     "addBypassLinks": false,

@@ -45,7 +45,17 @@ export async function callEngine(binary: string, request: object, timeoutMs: num
         return reject(new RizzbaseError("Engine returned an invalid response.", "ENGINE_PROTOCOL_ERROR"));
       }
       if (response.ok === false) {
-        const codes: string[] = ["INVALID_ARGUMENT", "AUTHENTICATION_FAILED", "INVALID_FORMAT", "PROJECT_BUSY", "LOBBY_NOT_FOUND", "YAP_NOT_FOUND", "YAP_EXISTS", "FILE_NOT_FOUND", "FILE_EXISTS", "PERMISSION_DENIED", "INVALID_BACKUP", "INVALID_CURSOR", "ENGINE_ERROR"];
+        const codes: string[] = [
+          "INVALID_ARGUMENT", "AUTHENTICATION_FAILED", "INVALID_FORMAT", "PROJECT_BUSY",
+          "LOBBY_NOT_FOUND", "YAP_NOT_FOUND", "YAP_EXISTS", "FILE_NOT_FOUND", "FILE_EXISTS",
+          "PERMISSION_DENIED", "INVALID_BACKUP", "INVALID_CURSOR", "ENGINE_ERROR",
+          "SYNC_NOT_ENABLED", "SYNC_IDENTITY_UNAVAILABLE", "SYNC_ALREADY_ENABLED",
+          "SYNC_CONFLICT", "SYNC_CONFLICT_NOT_FOUND", "SYNC_INVALID_STATE", "SYNC_HISTORY_LIMIT",
+          "SYNC_UNSUPPORTED_KEY", "SYNC_STALE_MEMBERSHIP", "SYNC_NOT_MEMBER",
+          "SYNC_PERMISSION_DENIED", "SYNC_INVALID_MEMBERSHIP", "SYNC_INVALID_SIGNATURE",
+          "SYNC_INVALID_OPERATION", "SYNC_OPERATION_COLLISION", "SYNC_MERGE_LIMIT",
+          "SYNC_INVALID_TRANSITION", "SYNC_INVALID_CHECKPOINT", "SYNC_INVALID_VALUE",
+        ];
         const code = codes.includes(String(response.errorCode)) ? response.errorCode as ErrorCode : "ENGINE_ERROR";
         const context = response.errorContext && typeof response.errorContext === "object" && !Array.isArray(response.errorContext)
           ? response.errorContext as Record<string, unknown>
