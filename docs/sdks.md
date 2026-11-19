@@ -1,10 +1,8 @@
 # SDKs in other languages
 
-**Node.js and Python** are production-ready. Install the engine separately;
-neither SDK downloads it. Each SDK owns only its language
-API and binary resolution; both use the same engine protocol of one JSON
-request on stdin and one JSON response on stdout. The CLI reference is the
-behavioral specification.
+**Go, Node.js, and Python** are supported SDKs. The Go SDK calls the engine
+in process. Node.js and Python use the separately installed engine and do not
+download it. The CLI reference is the behavioral specification.
 
 ## Status
 
@@ -12,9 +10,9 @@ behavioral specification.
 | --- | --- | --- |
 | Node.js / TypeScript | Stable (V1) | `npm install rizzbase`, see Node.js SDK page |
 | Python | Stable (V1) | Install from `python/`; Python 3.10+; no auto-download |
-| Go | Engine-native | Import `rizzbase/engine/core` directly, no CLI hop needed |
+| Go | Official (V1) | Import `rizzbase/engine/core` directly, no CLI or network dependency |
 
-The Python package is under [`python/`](../python/README.md). Both SDKs use
+The Python package is under [`python/`](../python/README.md). All SDKs use
 the same offline scenarios in [`conformance/`](../conformance/README.md).
 
 ## Engine and project-format compatibility
@@ -26,8 +24,9 @@ every future engine release will retain every behavior:
 | --- | --- | --- |
 | Node.js / TypeScript 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
 | Python 1.1.0 | `>=1.1.0 <2.0.0` | V1 (`projectFormatVersion: 1`) |
+| Go (engine module) | Matching engine major line | V1 (`projectFormatVersion: 1`) |
 
-Both SDKs reject engines below `1.1.0`, engine major version `2` or later, and
+Node.js and Python reject engines below `1.1.0`, engine major version `2` or later, and
 any engine that does not report format `1` through `--version`. The V1 engine
 reads and writes only V1 project envelopes. There is no automatic file-format
 migration; back up a project before changing engine versions. A new format

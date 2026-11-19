@@ -11,7 +11,7 @@ export default function Auth({ theme, toggle, go }: PageProps) {
         <h1>THE UI IS A<br /><span>PREVIEW ONLY.</span></h1>
         <p>Accounts and sign-in are not part of Rizzbase V1. This product interface is still a preview and does not connect to the local engine.</p>
         <Button tone="plain" onClick={() => go("home")}>BACK TO HOME <Icon name="arrow" /></Button>
-        <small>For local Project files, install the engine and use the Go CLI, Node.js SDK, or Python SDK.</small>
+        <small>For local Project files, use the official Go SDK or the Node.js or Python SDK.</small>
       </section>
       <div className="auth-quote">“local files. encrypted. no cloud drama.”<b>— Rizzbase V1</b></div>
     </main>

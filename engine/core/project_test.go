@@ -115,6 +115,34 @@ func TestImportProjectFromJSONBackup(t *testing.T) {
 	}
 }
 
+func TestAppendOnlyEvents(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.rizz")
+	passphrase := "test-only passphrase"
+	project, err := CreateProject(path, "events", passphrase)
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	if project.ProjectID == "" {
+		t.Fatal("new project should include projectId metadata")
+	}
+	first, err := AppendEvent(path, passphrase, "user.signup", "web", map[string]any{"plan": "free"})
+	if err != nil {
+		t.Fatalf("append event: %v", err)
+	}
+	second, err := AppendEvent(path, passphrase, "deploy.completed", "cli", map[string]any{"duration": 184})
+	if err != nil {
+		t.Fatalf("append event: %v", err)
+	}
+	events, err := ListEvents(path, passphrase)
+	if err != nil {
+		t.Fatalf("list events: %v", err)
+	}
+	if len(events) != 2 || events[0].ID != first.ID || events[1].ID != second.ID {
+		t.Fatalf("unexpected event order: %#v", events)
+	}
+}
+
 func TestProjectValidation(t *testing.T) {
 	dir := t.TempDir()
 	for _, tc := range []struct{ file, name, pass string }{

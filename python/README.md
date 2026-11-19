@@ -46,6 +46,8 @@ page = db.query(lobby["id"]).limit(10).execute_page()
 For SDK binary selection and compatibility requirements, see the
 [engine installation guide](https://github.com/pazti/Rizz-Base/blob/main/docs/installation.md)
 and [Node.js SDK guide](https://github.com/pazti/Rizz-Base/blob/main/docs/node-sdk.md).
+The [official Go SDK](https://github.com/pazti/Rizz-Base/blob/main/docs/go-sdk.md)
+is also available.
 
 The synchronous API includes project creation/open, backup export/import,
 lobby and Yap CRUD, and query filtering/ordering. Failures raise

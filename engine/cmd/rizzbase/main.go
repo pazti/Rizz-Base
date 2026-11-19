@@ -32,6 +32,8 @@ type request struct {
 	Name       string            `json:"name,omitempty"`
 	Data       json.RawMessage   `json:"data,omitempty"`
 	Yaps       []core.YapInput   `json:"yaps,omitempty"`
+	Kind       string            `json:"kind,omitempty"`
+	Source     string            `json:"source,omitempty"`
 	Passphrase string            `json:"passphrase"`
 	LockWaitMs int               `json:"lockWaitMs,omitempty"`
 	Query      core.QueryOptions `json:"query,omitempty"`
@@ -44,6 +46,8 @@ type response struct {
 	Lobbies      []core.Lobby         `json:"lobbies,omitempty"`
 	Yap          *core.Yap            `json:"yap,omitempty"`
 	Yaps         []core.Yap           `json:"yaps,omitempty"`
+	Event        *core.Event         `json:"event,omitempty"`
+	Events       []core.Event        `json:"events,omitempty"`
 	Page         *core.QueryPage      `json:"page,omitempty"`
 	Data         json.RawMessage      `json:"data,omitempty"`
 	Doctor       *storage.Diagnostics `json:"doctor,omitempty"`
@@ -74,7 +78,7 @@ func run(input io.Reader, output io.Writer) error {
 	}
 	for field := range fields {
 		switch field {
-		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query":
+		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query", "kind", "source":
 		default:
 			return errors.New("unknown request field")
 		}
@@ -101,6 +105,17 @@ func run(input io.Reader, output io.Writer) error {
 		res.Lobbies, err = core.ListLobbies(req.Path, req.Passphrase)
 	case "lobby.delete":
 		err = core.DeleteLobby(req.Path, req.Passphrase, req.LobbyID, time.Duration(req.LockWaitMs)*time.Millisecond)
+	case "event.append":
+		if len(req.Data) == 0 || !json.Valid(req.Data) {
+			return errors.New("event.append requires valid JSON data")
+		}
+		var event core.Event
+		event, err = core.AppendEvent(req.Path, req.Passphrase, req.Kind, req.Source, req.Data, time.Duration(req.LockWaitMs)*time.Millisecond)
+		if err == nil {
+			res.Event = &event
+		}
+	case "event.list":
+		res.Events, err = core.ListEvents(req.Path, req.Passphrase)
 	case "yap.create":
 		if len(req.Data) == 0 || !json.Valid(req.Data) {
 			return errors.New("yap.create requires valid JSON data")

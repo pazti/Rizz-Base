@@ -37,8 +37,8 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.INVALID_CURSOR,
     ErrorCode.ENGINE_ERROR,
 }
-_READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query"}
-_WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete"}
+_READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list"}
+_WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "event.append"}
 
 
 def _invalid(message: str):
@@ -491,6 +491,17 @@ class Rizzbase:
 
     def delete_yap(self, lobby_id, yap_id):
         self._request("yap.delete", lobbyId=lobby_id, yapId=yap_id)
+
+    def append_event(self, kind, data, source=""):
+        if not isinstance(kind, str) or not kind.strip() or len(kind.encode("utf-8")) > 256:
+            _invalid("Event kind must be between 1 and 256 bytes.")
+        if not isinstance(source, str) or len(source.encode("utf-8")) > 256:
+            _invalid("Event source must be at most 256 bytes.")
+        _validate_json(data)
+        return self._request("event.append", kind=kind, source=source, data=data)["event"]
+
+    def list_events(self):
+        return self._request("event.list").get("events", [])
 
     def query_yaps(self, lobby_id, options=None):
         options = deepcopy(options or {})

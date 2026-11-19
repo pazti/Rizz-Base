@@ -52,7 +52,8 @@ before running the installer to choose another version or destination. Set
 `RIZZBASE_RELEASE_BASE_URL` and `RIZZBASE_RELEASE_API_URL` only when using a
 compatible release mirror or a custom API endpoint.
 
-Both SDKs support engine versions `>=1.1.0 <2.0.0` and project format `1`.
+The official Go API uses the matching engine module. The Node.js and Python SDKs
+support engine versions `>=1.1.0 <2.0.0` and project format `1`.
 Engine and SDK release versions do not need to match. `rizzbase --version`
 prints machine-readable JSON containing both values.
 
@@ -133,7 +134,7 @@ go build -ldflags="-X main.version=1.1.0" -o ~/.rizzbase/bin/rizzbase ./cmd/rizz
 
 ## SDK binary selection
 
-Both SDKs resolve the engine in this order:
+The Node.js and Python SDKs resolve the engine in this order:
 
 1. `binaryPath` (Node.js) or `binary_path` (Python) in the SDK constructor.
 2. `RIZZBASE_BINARY`.

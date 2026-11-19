@@ -24,7 +24,7 @@ object structure, and encrypted encoding affect file size differently.
    data without treating benchmark duration alone as an approval signal.
 4. Decide whether 256 MiB is an upper bound or an intermediate tier leading
    to another limit. Preserve an explicit constant documented across the
-   engine, Node SDK, Python SDK, backup APIs, CLI, and docs.
+   engine, official Go SDK, Node SDK, Python SDK, backup APIs, CLI, and docs.
 5. Confirm that exporter/importer behavior remains bounded and rejects
    oversized files before replacing any existing Project or backup.
 

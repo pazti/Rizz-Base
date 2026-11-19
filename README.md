@@ -36,7 +36,7 @@
 - **Small, transparent scope.** Rizzbase is a local file library, not a
   realtime cloud platform. Queries scan a Lobby in memory; there are no indexes.
 
-V1 includes the Go engine and CLI, TypeScript/Node.js and Python SDKs,
+V1 includes the Go engine and official Go SDK, TypeScript/Node.js and Python SDKs,
 Project/Lobby/Yap operations, in-memory filters and ordering, and JSON
 export/restore. The React product UI is a preview and is not connected to
 local database files.
@@ -45,6 +45,7 @@ local database files.
 
 <p>
   <img src="https://img.shields.io/badge/Go-engine-0B0F0E?style=for-the-badge&logo=go&logoColor=00ADD8" alt="Go engine" />
+  <img src="https://img.shields.io/badge/Go-Official%20SDK-0B0F0E?style=for-the-badge&logo=go&logoColor=00ADD8" alt="Official Go SDK" />
   <img src="https://img.shields.io/badge/Node.js-SDK-0B0F0E?style=for-the-badge&logo=nodedotjs&logoColor=5FA04E" alt="Node.js SDK" />
   <img src="https://img.shields.io/badge/TypeScript-typed%20API-0B0F0E?style=for-the-badge&logo=typescript&logoColor=3178C6" alt="TypeScript SDK" />
   <img src="https://img.shields.io/badge/Python-SDK-0B0F0E?style=for-the-badge&logo=python&logoColor=FFD43B" alt="Python SDK" />
@@ -55,7 +56,7 @@ local database files.
 </p>
 
 - **Core:** Go engine and CLI; encrypted Projects use AES-256-GCM.
-- **SDKs:** Node.js with TypeScript, plus Python.
+- **SDKs:** Official Go API, Node.js with TypeScript, plus Python.
 - **Desktop:** Wails app with a React interface.
 - **Web preview:** React, Vite, and Tailwind CSS; it uses sample data and
   cannot access local `.rizz` files.
@@ -95,6 +96,13 @@ using the instructions in [Engine installation](docs/installation.md), or
 
 ### 2. Install an SDK
 
+For Go, use the official engine-native API:
+
+```sh
+go get rizzbase/engine/core
+```
+See the [Go SDK guide](docs/go-sdk.md).
+
 For Node.js:
 
 ```sh
@@ -118,6 +126,7 @@ each SDK: Node.js uses `binaryPath`, Python uses `binary_path`, then both check
 
 ### Supported languages
 
+- **Go** — official engine-native API; import `rizzbase/engine/core`.
 - **Node.js / TypeScript** — Node.js 20+, install with `npm install rizzbase`.
 - **Python** — Python 3.10+, install with `python -m pip install rizzbase`.
 
@@ -324,8 +333,9 @@ npx tsc --noEmit --strict --target ES2022 --module Node16 \
 Go 1.24+ and Node.js 20+ are required. The SDK's tests build the local Go CLI
 and exercise it using temporary encrypted projects. Binary releases build six
 OS/architecture variants when a matching version tag is pushed. The latest
-engine release is `v1.2.0`; Node.js and Python SDK packages remain on their
-independent `1.1.0` version line.
+engine release is `v1.3.0`; the official Go SDK follows the engine module,
+while Node.js and Python SDK packages remain on their independent `1.1.0`
+version line.
 
 See [SDK guide](docs/node-sdk.md), [file format and Go API](doc/FORMAT-legacy.md),
 [contributing](CONTRIBUTING.md) and [security](SECURITY.md). Rizzbase is

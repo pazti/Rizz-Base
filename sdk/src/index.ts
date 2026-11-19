@@ -3,14 +3,14 @@ import { dirname, join, resolve } from "node:path";
 import { ensureCompatibleEngine, resolveBinary } from "./binary.js";
 import { RizzbaseError } from "./errors.js";
 import { callEngine } from "./transport.js";
-import type { DoctorReport, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
+import type { DoctorReport, Event, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
 export { RizzbaseError } from "./errors.js";
 export type { ErrorCode } from "./errors.js";
-export type { DoctorReport, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
+export type { DoctorReport, Event, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, Yap, YapInput } from "./types.js";
 
 const MAX_BACKUP_SIZE = 64 << 20;
-const READ_OPERATIONS = new Set(["open", "lobby.list", "yap.get", "yap.list", "yap.query"]);
-const WRITE_OPERATIONS = new Set(["lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete"]);
+const READ_OPERATIONS = new Set(["open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list"]);
+const WRITE_OPERATIONS = new Set(["lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "event.append"]);
 const sleep = (delayMs: number) => new Promise(resolve => setTimeout(resolve, delayMs));
 
 function normalizeRetryOptions(options: RetryOptions | undefined, timeoutMs: number) {
@@ -204,6 +204,15 @@ export class Rizzbase {
     return (await this.request("yap.update", { lobbyId, yapId, data })).yap as Yap<T>;
   }
   async deleteYap(lobbyId: string, yapId: string): Promise<void> { await this.request("yap.delete", { lobbyId, yapId }); }
+  async appendEvent<T extends JsonValue>(kind: string, data: T, source = ""): Promise<Event<T>> {
+    if (typeof kind !== "string" || !kind.trim() || Buffer.byteLength(kind) > 256) invalid("Event kind must be between 1 and 256 bytes.");
+    if (typeof source !== "string" || Buffer.byteLength(source) > 256) invalid("Event source must be at most 256 bytes.");
+    validateJson(data);
+    return (await this.request("event.append", { kind, source, data })).event as Event<T>;
+  }
+  async listEvents<T = JsonValue>(): Promise<Event<T>[]> {
+    return (await this.request("event.list")).events as Event<T>[] ?? [];
+  }
   async queryYaps<T = JsonValue>(lobbyId: string, options: QueryOptions = {}): Promise<Yap<T>[]> {
     validateQuery(options);
     return (await this.request("yap.query", { lobbyId, query: options })).yaps as Yap<T>[] ?? [];

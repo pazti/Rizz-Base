@@ -20,9 +20,19 @@ import (
 // Project stores encrypted project metadata and its Lobby collection.
 type Project struct {
 	Version   int              `json:"version"`
+	ProjectID string           `json:"projectId,omitempty"`
 	Name      string           `json:"name"`
 	CreatedAt time.Time        `json:"createdAt"`
 	Lobbies   map[string]Lobby `json:"lobbies"`
+	Events    []Event          `json:"events,omitempty"`
+}
+
+type Event struct {
+	ID        string          `json:"id"`
+	Kind      string          `json:"kind"`
+	Source    string          `json:"source,omitempty"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Data      json.RawMessage `json:"data"`
 }
 
 type Lobby struct {
@@ -139,7 +149,11 @@ func CreateProject(path, name, passphrase string) (*Project, error) {
 	if name == "" || len(name) > 256 {
 		return nil, errors.New("project name must be between 1 and 256 bytes")
 	}
-	project := &Project{Version: 1, Name: name, CreatedAt: time.Now().UTC(), Lobbies: map[string]Lobby{}}
+	projectID, err := newID()
+	if err != nil {
+		return nil, err
+	}
+	project := &Project{Version: 1, ProjectID: projectID, Name: name, CreatedAt: time.Now().UTC(), Lobbies: map[string]Lobby{}}
 	data, err := json.Marshal(project)
 	if err != nil {
 		return nil, err
@@ -339,6 +353,42 @@ func DeleteYap(path, passphrase, lobbyID, yapID string, lockWait ...time.Duratio
 	}, lockWait...)
 }
 
+// AppendEvent appends an immutable, timestamped event to a Project.
+func AppendEvent(path, passphrase, kind, source string, data any, lockWait ...time.Duration) (Event, error) {
+	kind = strings.TrimSpace(kind)
+	source = strings.TrimSpace(source)
+	if kind == "" || len(kind) > 256 {
+		return Event{}, errors.New("event kind must be between 1 and 256 bytes")
+	}
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return Event{}, fmt.Errorf("encode event: %w", err)
+	}
+	id, err := newID()
+	if err != nil {
+		return Event{}, err
+	}
+	event := Event{ID: id, Kind: kind, Source: source, CreatedAt: time.Now().UTC(), Data: encoded}
+	err = modifyProject(path, passphrase, func(project *Project) error {
+		project.Events = append(project.Events, event)
+		return nil
+	}, lockWait...)
+	if err != nil {
+		return Event{}, err
+	}
+	return event, nil
+}
+
+func ListEvents(path, passphrase string) ([]Event, error) {
+	project, err := OpenProject(path, passphrase)
+	if err != nil {
+		return nil, err
+	}
+	events := make([]Event, len(project.Events))
+	copy(events, project.Events)
+	return events, nil
+}
+
 func getLobby(path, passphrase, lobbyID string) (Lobby, error) {
 	if !validID(lobbyID) {
 		return Lobby{}, errors.New("invalid lobby ID")
@@ -409,6 +459,20 @@ func decodeProject(data []byte) (*Project, error) {
 	}
 	if project.Lobbies == nil {
 		project.Lobbies = map[string]Lobby{}
+	}
+	if project.ProjectID != "" && !validID(project.ProjectID) {
+		return nil, errors.New("invalid project ID")
+	}
+	eventIDs := make(map[string]struct{}, len(project.Events))
+	for _, event := range project.Events {
+		if !validID(event.ID) || strings.TrimSpace(event.Kind) == "" ||
+			len(event.Kind) > 256 || event.CreatedAt.IsZero() || !json.Valid(event.Data) {
+			return nil, errors.New("invalid event data")
+		}
+		if _, exists := eventIDs[event.ID]; exists {
+			return nil, errors.New("invalid event data")
+		}
+		eventIDs[event.ID] = struct{}{}
 	}
 	for id, lobby := range project.Lobbies {
 		if !validID(id) || lobby.ID != id || strings.TrimSpace(lobby.Name) == "" ||

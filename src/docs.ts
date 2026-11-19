@@ -3,6 +3,7 @@ import overview from "../docs/overview.md?raw";
 import installation from "../docs/installation.md?raw";
 import cli from "../docs/cli.md?raw";
 import nodeSdk from "../docs/node-sdk.md?raw";
+import goSdk from "../docs/go-sdk.md?raw";
 import pythonSdk from "../python/README.md?raw";
 import sdks from "../docs/sdks.md?raw";
 import security from "../docs/security.md?raw";
@@ -40,6 +41,14 @@ export const docs: DocEntry[] = [
     blurb: "Every operation, request shape, errors.",
     badge: "12 OPS",
     markdown: cli,
+  },
+  {
+    slug: "go-sdk",
+    title: "Go SDK",
+    kicker: "OFFICIAL V1",
+    blurb: "Use the engine-native Go API directly.",
+    badge: "GO",
+    markdown: goSdk,
   },
   {
     slug: "node-sdk",

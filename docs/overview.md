@@ -5,7 +5,7 @@ Rizzbase is a **local-first database**. Each Project is one encrypted `.rizz` fi
 V1 ships three pieces:
 
 - **Go engine + CLI** (`engine/`) — the source of truth. It encrypts, decrypts, and mutates `.rizz` files.
-- **Node.js and Python SDKs** (`sdk/`, `python/`) — thin wrappers. Each spawns the engine once per operation over stdin/stdout.
+- **Official Go, Node.js, and Python SDKs** (`engine/`, `sdk/`, `python/`) — the Go SDK calls the engine in process; Node.js and Python are thin CLI wrappers.
 - **Product UI** (this site) — a Coming Soon preview. Its dashboard screens are mockups and are **not** wired to your `.rizz` files.
 
 ## The vocabulary
@@ -52,4 +52,4 @@ Go engine (one process per operation)
 
 No server, realtime, or multi-user access. No accounts, hosted backups, schema enforcement, indexes, or joins. Backups are manual JSON exports you protect yourself. Queries decrypt and scan one Lobby in memory. The UI preview is not connected to the engine.
 
-> Next: [install the engine](./installation.md), then use the [Node.js SDK](./node-sdk.md) or [Python SDK](../python/README.md).
+> Next: [install the engine](./installation.md), then use the [official Go SDK](./go-sdk.md), [Node.js SDK](./node-sdk.md), or [Python SDK](../python/README.md).

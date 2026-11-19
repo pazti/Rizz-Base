@@ -1,6 +1,6 @@
 # Node.js SDK
 
-The Node.js SDK wraps the engine binary: each method resolves a user-provided binary, spawns one engine process with your request on stdin, and resolves with the decoded result. A Python SDK is also available; see the [SDK overview](./sdks.md).
+The Node.js SDK wraps the engine binary: each method resolves a user-provided binary, spawns one engine process with your request on stdin, and resolves with the decoded result. Official Go and Python SDKs are also available; see the [SDK overview](./sdks.md).
 
 Requires **Node.js 20+** and an installed Rizzbase engine. The SDK supports engine versions `>=1.1.0 <2.0.0` and project format `1`. Engine, SDK, and project-format versions are independent.
 

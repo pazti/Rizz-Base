@@ -13,9 +13,18 @@ export interface Lobby {
 }
 export interface Project {
   version: number;
+  projectId?: string;
   name: string;
   createdAt: string;
   lobbies: Record<string, Lobby>;
+  events?: Event[];
+}
+export interface Event<T = JsonValue> {
+  id: string;
+  kind: string;
+  source?: string;
+  createdAt: string;
+  data: T;
 }
 export interface LockMetadata {
   pid: number;
