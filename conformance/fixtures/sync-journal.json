@@ -1,0 +1,29 @@
+{
+  "name": "sync-journal",
+  "steps": [
+    { "id": "create", "operation": "create", "args": { "name": "Sync fixture" } },
+    { "id": "initialize", "operation": "sync.initialize" },
+    {
+      "id": "lobby",
+      "operation": "lobby.create",
+      "args": { "name": "shared" },
+      "capture": { "lobby": "lobby.id" }
+    },
+    {
+      "id": "yap",
+      "operation": "yap.create",
+      "args": { "lobbyId": "${lobby}", "yapId": "entry", "data": { "value": "shared" } }
+    },
+    {
+      "id": "inspect",
+      "operation": "sync.inspect",
+      "expect": {
+        "fields": {
+          "sync.membershipCount": 1,
+          "sync.operationCount": 2,
+          "sync.conflictCount": 0
+        }
+      }
+    }
+  ]
+}

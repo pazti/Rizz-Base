@@ -18,6 +18,7 @@ export interface Project {
   createdAt: string;
   lobbies: Record<string, Lobby>;
   events?: Event[];
+  sync?: ProjectSync;
 }
 export interface Event<T = JsonValue> {
   id: string;
@@ -25,6 +26,32 @@ export interface Event<T = JsonValue> {
   source?: string;
   createdAt: string;
   data: T;
+}
+export interface ProjectSync {
+  ownerPublicKey: number[];
+  membershipHistory: unknown[];
+  operations: SyncOperation[];
+  conflicts?: SyncConflict[];
+}
+export interface SyncIdentityInfo {
+  actorId: string;
+  signingPublicKey: number[];
+  encryptionPublicKey: number[];
+  identityEnvelope: number[];
+}
+export interface SyncOperation {
+  projectId: string;
+  membershipEpoch: number;
+  id: { actor: string; sequence: number };
+  key: string;
+  clock: Record<string, number>;
+  encryptedValue?: number[];
+  deleted?: boolean;
+  signature?: number[];
+}
+export interface SyncConflict {
+  key: string;
+  operations: SyncOperation[];
 }
 export interface LockMetadata {
   pid: number;

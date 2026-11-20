@@ -100,6 +100,7 @@ export default function Landing({ theme, toggle, go }: PageProps) {
               >
                 <Icon name="github" /> VIEW ON GITHUB
               </a>
+              <button className="btn secondary" onClick={() => go("docs")}>READ THE DOCS <Icon name="arrow" /></button>
             </div>
           </div>
           <div className="hero-product">

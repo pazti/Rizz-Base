@@ -52,8 +52,7 @@ before running the installer to choose another version or destination. Set
 `RIZZBASE_RELEASE_BASE_URL` and `RIZZBASE_RELEASE_API_URL` only when using a
 compatible release mirror or a custom API endpoint.
 
-The official Go API uses the matching engine module. The Node.js and Python SDKs
-support engine versions `>=1.1.0 <2.0.0` and project format `1`.
+All SDKs support engine versions `>=1.1.0 <2.0.0` and project format `1`.
 Engine and SDK release versions do not need to match. `rizzbase --version`
 prints machine-readable JSON containing both values.
 
@@ -123,9 +122,9 @@ Cosign/GitHub OIDC. The signature verifies the release manifest and its
 workflow identity; the manifest in turn hashes all platform binaries.
 
 For an independent build policy, build the engine from source, inspect it, and
-set the SDK's `binaryPath` (Node.js) or `binary_path` (Python) to that
-executable. A source build reports `dev`;
-pass a stable semver at build time to use it with the Node SDK:
+set the SDK's `binaryPath` (Node.js), `binary_path` (Python), or
+`WithBinaryPath` (Go) to that executable. A source build reports `dev`; pass a
+stable semver at build time to use it with an SDK:
 
 ```sh
 cd engine
@@ -134,11 +133,11 @@ go build -ldflags="-X main.version=1.1.0" -o ~/.rizzbase/bin/rizzbase ./cmd/rizz
 
 ## SDK binary selection
 
-The Node.js and Python SDKs resolve the engine in this order:
+All SDKs resolve the engine in this order:
 
-1. `binaryPath` (Node.js) or `binary_path` (Python) in the SDK constructor.
+1. `binaryPath` (Node.js), `binary_path` (Python), or `WithBinaryPath` (Go).
 2. `RIZZBASE_BINARY`.
 3. `rizzbase` (or `rizzbase.exe` on Windows) on `PATH`.
 
-If no executable is found, the SDK reports `BINARY_UNAVAILABLE` with the
-locations it searched. Neither SDK downloads a binary.
+If no executable is found, the SDK reports `BINARY_UNAVAILABLE` with search
+guidance. No SDK downloads a binary.
