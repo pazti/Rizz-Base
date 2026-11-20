@@ -36,6 +36,10 @@ migration; back up a project before changing engine versions. A new format
 requires an explicit compatibility decision and tests before its engine or SDK
 support is published.
 
+The Go, Node.js, and Python SDKs share the same append-only
+[Events API](./events.md), including exact kind/source filters and cursor
+pagination.
+
 ## Go API
 
 The Go client is a process-based SDK under [`sdk/go/`](../sdk/go/README.md).

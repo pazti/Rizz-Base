@@ -36,10 +36,10 @@
 - **Small, transparent scope.** Rizzbase is a local file library, not a
   realtime cloud platform. Queries scan a Lobby in memory; there are no indexes.
 
-V1 includes the Go engine and CLI, official TypeScript/Node.js, Python, and Go SDKs,
-Project/Lobby/Yap operations, in-memory filters and ordering, and JSON
-export/restore. The React product UI is a preview and is not connected to
-local database files.
+V1 includes the Go engine and CLI, official TypeScript/Node.js, Python, and Go
+SDKs, Project/Lobby/Yap operations, append-only Events, in-memory filters and
+ordering, and JSON export/restore. See [Events](docs/events.md) for SDK usage.
+The React product UI is a preview and is not connected to local database files.
 
 ## Technology stack
 

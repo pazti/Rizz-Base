@@ -86,6 +86,8 @@ end in `.rizz`. All engine operations take a `context.Context`.
   `ListYaps`, `UpdateYap`, `DeleteYap`
 - Queries: `QueryYaps`, `QueryYapPage`, and immutable `Query` builder with
   `Where`, `OrderBy`, `Limit`, `After`, `Exec`, and `ExecPage`
+- Events: append-only `AppendEvent`, append-order `ListEvents`, and filtered,
+  cursor-paged `QueryEvents` by kind and source
 - Team sync: `GenerateSyncIdentity`, `InitializeSync`, `AttachSyncIdentity`,
   `UpdateSyncMembers`, `UpdateSyncMembership`, `MergeSyncOperations`, and
   `ResolveSyncConflict`. `Project.Sync` exposes the signed membership history,

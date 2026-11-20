@@ -144,9 +144,11 @@ func New(path, passphrase string, options ...Option) (*DB, error) {
 
 type Project struct {
 	Version   int              `json:"version"`
+	ProjectID string           `json:"projectId,omitempty"`
 	Name      string           `json:"name"`
 	CreatedAt time.Time        `json:"createdAt"`
 	Lobbies   map[string]Lobby `json:"lobbies"`
+	Events    []Event          `json:"events,omitempty"`
 	Sync      *ProjectSync     `json:"sync,omitempty"`
 }
 
@@ -232,6 +234,26 @@ type YapInput struct {
 	Data any    `json:"data"`
 }
 
+type Event struct {
+	ID        string          `json:"id"`
+	Kind      string          `json:"kind"`
+	Source    string          `json:"source,omitempty"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Data      json.RawMessage `json:"data"`
+}
+
+type EventQueryOptions struct {
+	Kind   string `json:"kind,omitempty"`
+	Source string `json:"source,omitempty"`
+	Limit  *int   `json:"limit,omitempty"`
+	Cursor string `json:"cursor,omitempty"`
+}
+
+type EventPage struct {
+	Events     []Event `json:"events"`
+	NextCursor string  `json:"nextCursor"`
+}
+
 type LockMetadata struct {
 	PID           int       `json:"pid"`
 	Hostname      string    `json:"hostname"`
@@ -273,6 +295,9 @@ type engineResponse struct {
 	Yap          *Yap                `json:"yap,omitempty"`
 	Yaps         []Yap               `json:"yaps,omitempty"`
 	Page         *QueryPage          `json:"page,omitempty"`
+	Event        *Event              `json:"event,omitempty"`
+	Events       []Event             `json:"events,omitempty"`
+	EventPage    *EventPage          `json:"eventPage,omitempty"`
 	Data         json.RawMessage     `json:"data,omitempty"`
 	Doctor       *DoctorReport       `json:"doctor,omitempty"`
 	SyncIdentity *SyncIdentityInfo   `json:"syncIdentity,omitempty"`
@@ -285,6 +310,7 @@ type engineResponse struct {
 
 var readOperations = map[string]bool{
 	"open": true, "lobby.list": true, "yap.get": true, "yap.list": true, "yap.query": true,
+	"event.list": true, "event.query": true,
 }
 
 func (db *DB) request(ctx context.Context, operation string, fields map[string]any) (engineResponse, error) {
@@ -572,7 +598,8 @@ func isWriteOperation(operation string) bool {
 		strings.HasPrefix(operation, "yap.update") || strings.HasPrefix(operation, "yap.delete") ||
 		strings.HasPrefix(operation, "sync.initialize") || strings.HasPrefix(operation, "sync.identity.attach") ||
 		strings.HasPrefix(operation, "sync.members") || strings.HasPrefix(operation, "sync.membership") ||
-		strings.HasPrefix(operation, "sync.operations.merge") || strings.HasPrefix(operation, "sync.conflict.resolve")
+		strings.HasPrefix(operation, "sync.operations.merge") || strings.HasPrefix(operation, "sync.conflict.resolve") ||
+		strings.HasPrefix(operation, "event.append")
 }
 
 func (db *DB) GenerateSyncIdentity(ctx context.Context, identityPassphrase string) (*SyncIdentityInfo, error) {

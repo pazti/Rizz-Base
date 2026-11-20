@@ -119,6 +119,23 @@ test("SDK covers project, Lobby, Yap and query operations", async () => {
     limit: 2,
     cursor: firstPage.nextCursor,
   }), error => error.code === "INVALID_ARGUMENT");
+  await db.appendEvent("signup", { plan: "free" }, "web");
+  await db.appendEvent("deploy", { duration: 10 }, "cli");
+  await db.appendEvent("signup", { plan: "pro" }, "web");
+  const firstEventPage = await db.queryEvents({ kind: "signup", source: "web", limit: 1 });
+  assert.equal(firstEventPage.events[0].data.plan, "free");
+  assert.notEqual(firstEventPage.nextCursor, "");
+  const secondEventPage = await db.queryEvents({
+    kind: "signup",
+    source: "web",
+    limit: 1,
+    cursor: firstEventPage.nextCursor,
+  });
+  assert.equal(secondEventPage.events[0].data.plan, "pro");
+  assert.equal(secondEventPage.nextCursor, "");
+  await assert.rejects(db.queryEvents({ limit: -1 }), error => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(db.queryEvents({ unknown: "option" }), error => error.code === "INVALID_ARGUMENT");
+  assert.deepEqual((await db.listEvents()).map(event => event.kind), ["signup", "deploy", "signup"]);
   await db.updateYap(lobby.id, "one", { score: 3 });
   assert.deepEqual(await db.getYap(lobby.id, "one"), { score: 3 });
   assert.deepEqual((await db.listLobbies()).map(l => l.id), [lobby.id]);

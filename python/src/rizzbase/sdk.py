@@ -56,7 +56,7 @@ _ENGINE_ERROR_CODES = {
     ErrorCode.SYNC_INVALID_CHECKPOINT,
     ErrorCode.SYNC_INVALID_VALUE,
 }
-_READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list"}
+_READ_OPERATIONS = {"open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list", "event.query"}
 _WRITE_OPERATIONS = {"lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "sync.initialize", "event.append"}
 
 
@@ -524,6 +524,28 @@ class Rizzbase:
 
     def list_events(self):
         return self._request("event.list").get("events", [])
+
+    def query_events(self, options=None):
+        if options is None:
+            options = {}
+        if not isinstance(options, dict):
+            _invalid("event query options must be a mapping.")
+        options = dict(options)
+        allowed = {"kind", "source", "limit", "cursor"}
+        unknown = set(options) - allowed
+        if unknown:
+            _invalid(f"Unknown event query option: {sorted(unknown)[0]}.")
+        for field in ("kind", "source"):
+            value = options.get(field)
+            if value is not None and (not isinstance(value, str) or len(value.encode("utf-8")) > 256):
+                _invalid(f"event {field} filter must be a string of at most 256 bytes.")
+        limit = options.get("limit")
+        if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or limit < 0 or limit > 2**53 - 1):
+            _invalid("event query limit must be a non-negative safe integer.")
+        cursor = options.get("cursor")
+        if cursor is not None and (not isinstance(cursor, str) or len(cursor) > 4096):
+            _invalid("event query cursor must be a string no longer than 4096 characters.")
+        return self._request("event.query", eventQuery=options)["eventPage"]
 
     def query_yaps(self, lobby_id, options=None):
         options = deepcopy(options or {})

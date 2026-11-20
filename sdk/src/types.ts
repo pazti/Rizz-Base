@@ -27,6 +27,16 @@ export interface Event<T = JsonValue> {
   createdAt: string;
   data: T;
 }
+export interface EventQueryOptions {
+  kind?: string;
+  source?: string;
+  limit?: number;
+  cursor?: string;
+}
+export interface EventPage<T = JsonValue> {
+  events: Event<T>[];
+  nextCursor: string;
+}
 export interface ProjectSync {
   ownerPublicKey: number[];
   membershipHistory: unknown[];

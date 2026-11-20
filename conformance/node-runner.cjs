@@ -36,6 +36,7 @@ function getPath(value, path) {
 function normalize(value, generatedIds, directory, key = "") {
   if (key === "createdAt") return "<timestamp>";
   if (key === "nextCursor" && typeof value === "string" && value) return "<cursor>";
+  if (key === "projectId" && typeof value === "string") return "<generated-id>";
   if (typeof value === "string") {
     if (generatedIds.includes(value)) return "<generated-id>";
     return value.replaceAll(directory, "<temporary-directory>");
@@ -142,6 +143,17 @@ async function runFixture(fixturePath) {
             await db.deleteLobby(args.lobbyId);
             result = {};
             break;
+          case "event.append":
+            result = { event: await db.appendEvent(args.kind, args.data, args.source) };
+            break;
+          case "event.list":
+            result = { events: await db.listEvents() };
+            break;
+          case "event.query": {
+            const eventPage = await db.queryEvents(args.eventQuery);
+            result = { events: eventPage.events, eventPage };
+            break;
+          }
           case "yap.create":
             result = { yap: await db.createYap(args.lobbyId, args.yapId, args.data) };
             break;

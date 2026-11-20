@@ -6,6 +6,7 @@ import nodeSdk from "../docs/node-sdk.md?raw";
 import goSdk from "../docs/go-sdk.md?raw";
 import pythonSdk from "../python/README.md?raw";
 import sdks from "../docs/sdks.md?raw";
+import events from "../docs/events.md?raw";
 import security from "../docs/security.md?raw";
 
 export interface DocEntry {
@@ -65,6 +66,14 @@ export const docs: DocEntry[] = [
     blurb: "Install Python, set up the engine, and run a quickstart.",
     badge: "PYTHON",
     markdown: pythonSdk,
+  },
+  {
+    slug: "events",
+    title: "Append-only Events",
+    kicker: "LOCAL ACTIVITY STREAM",
+    blurb: "Append, filter, and page analytics or logs locally.",
+    badge: "EVENTS",
+    markdown: events,
   },
   {
     slug: "sdks",

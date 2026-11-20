@@ -36,6 +36,7 @@ type request struct {
 	Passphrase         string                       `json:"passphrase"`
 	LockWaitMs         int                          `json:"lockWaitMs,omitempty"`
 	Query              core.QueryOptions            `json:"query,omitempty"`
+	EventQuery         core.EventQueryOptions       `json:"eventQuery,omitempty"`
 	IdentityPassphrase string                       `json:"identityPassphrase,omitempty"`
 	IdentityEnvelope   []byte                       `json:"identityEnvelope,omitempty"`
 	TrustedOwner       []byte                       `json:"trustedOwner,omitempty"`
@@ -63,6 +64,7 @@ type response struct {
 	Conflicts    []rizzsync.Conflict           `json:"conflicts,omitempty"`
 	Event        *core.Event                   `json:"event,omitempty"`
 	Events       []core.Event                  `json:"events,omitempty"`
+	EventPage    *core.EventPage               `json:"eventPage,omitempty"`
 	Error        string                        `json:"error,omitempty"`
 	ErrorCode    string                        `json:"errorCode,omitempty"`
 	ErrorContext *storage.LockInfo             `json:"errorContext,omitempty"`
@@ -91,7 +93,7 @@ func run(input io.Reader, output io.Writer) error {
 	for field := range fields {
 		switch field {
 		case "operation", "path", "backupPath", "lobbyId", "yapId", "name", "data", "yaps", "passphrase", "lockWaitMs", "query",
-			"identityPassphrase", "identityEnvelope", "trustedOwner", "operationKey", "deleted", "members", "membership", "operations", "kind", "source":
+			"identityPassphrase", "identityEnvelope", "trustedOwner", "operationKey", "deleted", "members", "membership", "operations", "kind", "source", "eventQuery":
 		default:
 			return errors.New("unknown request field")
 		}
@@ -165,6 +167,13 @@ func run(input io.Reader, output io.Writer) error {
 		}
 	case "event.list":
 		res.Events, err = core.ListEvents(req.Path, req.Passphrase)
+	case "event.query":
+		var page core.EventPage
+		page, err = core.QueryEvents(req.Path, req.Passphrase, req.EventQuery)
+		if err == nil {
+			res.Events = page.Events
+			res.EventPage = &page
+		}
 	case "yap.create":
 		if len(req.Data) == 0 || !json.Valid(req.Data) {
 			return errors.New("yap.create requires valid JSON data")

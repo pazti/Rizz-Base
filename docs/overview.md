@@ -15,6 +15,7 @@ V1 ships three pieces:
 | Project | The database | One encrypted `.rizz` file |
 | Lobby | A collection | Named group with a generated ID |
 | Yap | A document | JSON value under an ID you choose |
+| Event | An activity record | Append-only JSON data with an engine timestamp |
 | Field | A value | Any JSON value |
 
 Think of it like this:
@@ -52,4 +53,4 @@ Go engine (one process per operation)
 
 No server, realtime, or multi-user access. No accounts, hosted backups, schema enforcement, indexes, or joins. Backups are manual JSON exports you protect yourself. Queries decrypt and scan one Lobby in memory. The UI preview is not connected to the engine.
 
-> Next: [install the engine](./installation.md), then use the [Go SDK](../sdk/go/README.md), [Node.js SDK](./node-sdk.md), or [Python SDK](../python/README.md).
+> Next: [install the engine](./installation.md), then use the [Go SDK](../sdk/go/README.md), [Node.js SDK](./node-sdk.md), or [Python SDK](../python/README.md). See [append-only Events](./events.md) for activity logs.

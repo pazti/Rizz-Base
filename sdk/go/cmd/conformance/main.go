@@ -295,6 +295,22 @@ func runOperation(operation string, args map[string]any, db *rizzbase.DB) (map[s
 		return map[string]any{"lobbies": lobbies}, err
 	case "lobby.delete":
 		return map[string]any{}, db.DeleteLobby(ctx, stringArg(args, "lobbyId", ""))
+	case "event.append":
+		event, err := db.AppendEvent(ctx, stringArg(args, "kind", ""), stringArg(args, "source", ""), args["data"])
+		return map[string]any{"event": event}, err
+	case "event.list":
+		events, err := db.ListEvents(ctx)
+		return map[string]any{"events": events}, err
+	case "event.query":
+		options, err := eventQueryOptions(args["eventQuery"])
+		if err != nil {
+			return nil, err
+		}
+		page, err := db.QueryEvents(ctx, options)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"events": page.Events, "eventPage": page}, nil
 	case "yap.create":
 		yap, err := db.CreateYap(ctx, stringArg(args, "lobbyId", ""), stringArg(args, "yapId", ""), args["data"])
 		return map[string]any{"yap": yap}, err
@@ -334,6 +350,21 @@ func runOperation(operation string, args map[string]any, db *rizzbase.DB) (map[s
 	default:
 		return nil, fmt.Errorf("unsupported fixture operation: %s", operation)
 	}
+}
+
+func eventQueryOptions(value any) (rizzbase.EventQueryOptions, error) {
+	if value == nil {
+		return rizzbase.EventQueryOptions{}, nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return rizzbase.EventQueryOptions{}, err
+	}
+	var options rizzbase.EventQueryOptions
+	if err := json.Unmarshal(data, &options); err != nil {
+		return rizzbase.EventQueryOptions{}, err
+	}
+	return options, nil
 }
 
 func yapInputs(value any) ([]rizzbase.YapInput, error) {
@@ -488,6 +519,11 @@ func normalize(value any, generatedIDs []string, directory string) (any, error) 
 func normalizeValue(value any, generatedIDs []string, directory, key string) any {
 	if key == "createdAt" {
 		return "<timestamp>"
+	}
+	if key == "projectId" {
+		if _, ok := value.(string); ok {
+			return "<generated-id>"
+		}
 	}
 	if key == "nextCursor" {
 		if text, ok := value.(string); ok && text != "" {

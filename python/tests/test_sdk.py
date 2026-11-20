@@ -116,6 +116,22 @@ class ValidationTests(unittest.TestCase):
                     database.create_yaps("lobby", yaps)
                 self.assertEqual(caught.exception.code, ErrorCode.INVALID_ARGUMENT)
 
+    def test_event_query_validation_precedes_engine_spawn(self):
+        database = Rizzbase("events.rizz", "passphrase", binary_path="missing-engine")
+        for options in (
+            [],
+            {"kind": 4},
+            {"source": "s" * 257},
+            {"limit": True},
+            {"limit": -1},
+            {"cursor": "x" * 4097},
+            {"unknown": "option"},
+        ):
+            with self.subTest(options=options):
+                with self.assertRaises(RizzbaseError) as caught:
+                    database.query_events(options)
+                self.assertEqual(caught.exception.code, ErrorCode.INVALID_ARGUMENT)
+
 
 class SubprocessOutputTests(unittest.TestCase):
     @staticmethod

@@ -3,13 +3,13 @@ import { dirname, join, resolve } from "node:path";
 import { ensureCompatibleEngine, resolveBinary } from "./binary.js";
 import { RizzbaseError } from "./errors.js";
 import { callEngine } from "./transport.js";
-import type { DoctorReport, Event, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncIdentityInfo, Yap, YapInput } from "./types.js";
+import type { DoctorReport, Event, EventPage, EventQueryOptions, Filter, JsonValue, Lobby, Operator, OrderDirection, Project, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncIdentityInfo, Yap, YapInput } from "./types.js";
 export { RizzbaseError } from "./errors.js";
 export type { ErrorCode } from "./errors.js";
-export type { DoctorReport, Event, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, ProjectSync, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncConflict, SyncIdentityInfo, SyncOperation, Yap, YapInput } from "./types.js";
+export type { DoctorReport, Event, EventPage, EventQueryOptions, Filter, JsonValue, JsonPrimitive, LockDiagnostics, LockMetadata, Lobby, Operator, OrderBy, OrderDirection, Project, ProjectSync, QueryOptions, QueryPage, RetryOptions, RizzbaseOptions, SyncConflict, SyncIdentityInfo, SyncOperation, Yap, YapInput } from "./types.js";
 
 const MAX_BACKUP_SIZE = 64 << 20;
-const READ_OPERATIONS = new Set(["open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list"]);
+const READ_OPERATIONS = new Set(["open", "lobby.list", "yap.get", "yap.list", "yap.query", "event.list", "event.query"]);
 const WRITE_OPERATIONS = new Set(["lobby.create", "lobby.delete", "yap.create", "yap.bulkCreate", "yap.update", "yap.delete", "sync.initialize", "event.append"]);
 const sleep = (delayMs: number) => new Promise(resolve => setTimeout(resolve, delayMs));
 
@@ -215,6 +215,19 @@ export class Rizzbase {
   }
   async listEvents<T = JsonValue>(): Promise<Event<T>[]> {
     return (await this.request("event.list")).events as Event<T>[] ?? [];
+  }
+  async queryEvents<T = JsonValue>(options: EventQueryOptions = {}): Promise<EventPage<T>> {
+    if (!options || typeof options !== "object" || Array.isArray(options)) invalid("event query options must be an object.");
+    for (const key of Object.keys(options)) {
+      if (!["kind", "source", "limit", "cursor"].includes(key)) invalid(`Unknown event query option: ${key}.`);
+    }
+    if (options.kind !== undefined && (typeof options.kind !== "string" || Buffer.byteLength(options.kind) > 256)) invalid("event kind filter must be a string of at most 256 bytes.");
+    if (options.source !== undefined && (typeof options.source !== "string" || Buffer.byteLength(options.source) > 256)) invalid("event source filter must be a string of at most 256 bytes.");
+    if (options.limit !== undefined && (!Number.isSafeInteger(options.limit) || options.limit < 0)) invalid("event query limit must be a non-negative safe integer.");
+    if (options.cursor !== undefined && (typeof options.cursor !== "string" || options.cursor.length > 4096)) invalid("event query cursor must be a string no longer than 4096 characters.");
+    const response = await this.request("event.query", { eventQuery: options });
+    if (!response.eventPage) throw new RizzbaseError("Engine response omitted the event query page.", "ENGINE_PROTOCOL_ERROR");
+    return response.eventPage as EventPage<T>;
   }
   async queryYaps<T = JsonValue>(lobbyId: string, options: QueryOptions = {}): Promise<Yap<T>[]> {
     validateQuery(options);

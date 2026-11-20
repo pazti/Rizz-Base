@@ -47,7 +47,9 @@ in language-specific tests. Keep fixture inputs offline and avoid assertions
 on timestamps, generated IDs, and machine-specific file paths.
 
 The query fixture covers atomic `yap.bulkCreate` and `yap.query` cursor
-continuation, ensuring all SDKs share the batch and page response shapes.
+continuation, ensuring all SDKs share the batch and page response shapes. The
+Events fixture covers append order, exact kind/source filters, cursor
+continuation, and rejection of cursors used with different filters.
 The sync-journal fixture initializes owner membership, journals normal Lobby
 and Yap writes, and compares the resulting membership, operation, and conflict
 counts across all three SDKs. Sync exchange remains application-provided; the

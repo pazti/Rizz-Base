@@ -179,6 +179,30 @@ func TestEngineIntegration(t *testing.T) {
 	if _, err := db.QueryYaps(ctx, lobby.ID, QueryOptions{Limit: intPointer(-1)}); !hasCode(err, CodeInvalidArgument) {
 		t.Fatalf("negative query limit error = %v", err)
 	}
+	if _, err := db.AppendEvent(ctx, "signup", "web", map[string]any{"plan": "free"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.AppendEvent(ctx, "deploy", "cli", map[string]any{"duration": 10}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.AppendEvent(ctx, "signup", "web", map[string]any{"plan": "pro"}); err != nil {
+		t.Fatal(err)
+	}
+	eventLimit := 1
+	eventPage, err := db.QueryEvents(ctx, EventQueryOptions{Kind: "signup", Source: "web", Limit: &eventLimit})
+	if err != nil || len(eventPage.Events) != 1 || eventPage.NextCursor == "" {
+		t.Fatalf("first event page = %#v, error = %v", eventPage, err)
+	}
+	eventPage, err = db.QueryEvents(ctx, EventQueryOptions{
+		Kind: "signup", Source: "web", Limit: &eventLimit, Cursor: eventPage.NextCursor,
+	})
+	if err != nil || len(eventPage.Events) != 1 || eventPage.NextCursor != "" {
+		t.Fatalf("second event page = %#v, error = %v", eventPage, err)
+	}
+	events, err := db.ListEvents(ctx)
+	if err != nil || len(events) != 3 || events[0].Kind != "signup" || events[2].Kind != "signup" {
+		t.Fatalf("events = %#v, error = %v", events, err)
+	}
 
 	backup := filepath.Join(dir, "backup.json")
 	if err := db.Export(ctx, backup); err != nil {

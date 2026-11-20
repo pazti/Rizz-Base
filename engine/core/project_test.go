@@ -143,6 +143,43 @@ func TestAppendOnlyEvents(t *testing.T) {
 	}
 }
 
+func TestQueryEventsCursorAndFilters(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "event-pages.rizz")
+	if _, err := CreateProject(path, "events", "test-only"); err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []struct {
+		kind, source string
+	}{
+		{"signup", "web"},
+		{"deploy", "cli"},
+		{"signup", "web"},
+	} {
+		if _, err := AppendEvent(path, "test-only", event.kind, event.source, map[string]any{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	limit := 1
+	options := EventQueryOptions{Kind: "signup", Source: "web", Limit: &limit}
+	first, err := QueryEvents(path, "test-only", options)
+	if err != nil || len(first.Events) != 1 || first.NextCursor == "" {
+		t.Fatalf("first page: %#v, %v", first, err)
+	}
+	options.Cursor = first.NextCursor
+	second, err := QueryEvents(path, "test-only", options)
+	if err != nil || len(second.Events) != 1 || second.NextCursor != "" {
+		t.Fatalf("second page: %#v, %v", second, err)
+	}
+	options.Kind = "deploy"
+	if _, err := QueryEvents(path, "test-only", options); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("changed query should reject cursor, got %v", err)
+	}
+	options.Cursor = "invalid"
+	if _, err := QueryEvents(path, "test-only", options); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("invalid cursor should be rejected, got %v", err)
+	}
+}
+
 func TestProjectValidation(t *testing.T) {
 	dir := t.TempDir()
 	for _, tc := range []struct{ file, name, pass string }{

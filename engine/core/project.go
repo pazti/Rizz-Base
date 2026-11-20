@@ -639,6 +639,9 @@ func AppendEvent(path, passphrase, kind, source string, data any, lockWait ...ti
 	if kind == "" || len(kind) > 256 {
 		return Event{}, errors.New("event kind must be between 1 and 256 bytes")
 	}
+	if len(source) > 256 {
+		return Event{}, errors.New("event source must be at most 256 bytes")
+	}
 	encoded, err := json.Marshal(data)
 	if err != nil {
 		return Event{}, fmt.Errorf("encode event: %w", err)

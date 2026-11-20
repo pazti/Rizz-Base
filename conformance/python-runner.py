@@ -66,6 +66,8 @@ def normalize(value, generated_ids, directory, key=""):
         return "<timestamp>"
     if key == "nextCursor" and isinstance(value, str) and value:
         return "<cursor>"
+    if key == "projectId" and isinstance(value, str):
+        return "<generated-id>"
     if isinstance(value, str):
         if value in generated_ids:
             return "<generated-id>"
@@ -164,6 +166,13 @@ def run_fixture(fixture_path):
                 elif operation == "lobby.delete":
                     database.delete_lobby(args["lobbyId"])
                     result = {}
+                elif operation == "event.append":
+                    result = {"event": database.append_event(args["kind"], args["data"], args.get("source", ""))}
+                elif operation == "event.list":
+                    result = {"events": database.list_events()}
+                elif operation == "event.query":
+                    result = {"eventPage": database.query_events(args.get("eventQuery"))}
+                    result["events"] = result["eventPage"]["events"]
                 elif operation == "yap.create":
                     result = {"yap": database.create_yap(args["lobbyId"], args["yapId"], args["data"])}
                 elif operation == "yap.bulkCreate":
@@ -210,6 +219,8 @@ def run_fixture(fixture_path):
                 normalized_result.setdefault("lobbies", [])
             if not expected_error and step["operation"] in ("yap.list", "yap.query"):
                 normalized_result.setdefault("yaps", [])
+            if not expected_error and step["operation"] == "event.list":
+                normalized_result.setdefault("events", [])
             normalized_steps.append({
                 "step": step["id"],
                 "result": normalize(normalized_result, generated_ids, directory),

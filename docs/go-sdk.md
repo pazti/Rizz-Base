@@ -1,83 +1,34 @@
 # Go SDK
 
-Rizzbase provides an official Go SDK through the `rizzbase/engine` module.
-It uses the engine API in process, so it does not spawn a CLI process or
-require a separately installed binary.
+The official Go SDK is a process client for the separately installed Rizzbase
+engine. It uses the same JSON protocol as the Node.js and Python SDKs.
 
 ```sh
-go get rizzbase/engine/core
+go get github.com/pazti/Rizz-Base/sdk/go
 ```
 
-Module: `rizzbase/engine`
+See the [Go SDK guide](../sdk/go/README.md) for installation, the full API, and
+security guidance. The SDK provides context-aware project, Lobby, Yap, query,
+and team-sync APIs.
+
+## Append-only Events
+
+Events are appended to the encrypted Project and cannot be updated or deleted.
+The Go client supports appending, listing in append order, and cursor-paged
+queries filtered by kind and source:
 
 ```go
-package main
+event, err := db.AppendEvent(ctx, "user.signup", "web", map[string]any{
+	"plan": "free",
+})
+events, err := db.ListEvents(ctx)
 
-import (
-	"log"
-
-	"rizzbase/engine/core"
-)
-
-func main() {
-	project, err := core.CreateProject("./journal.rizz", "Personal journal", "private-passphrase")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	lobby, err := core.CreateLobby("./journal.rizz", "private-passphrase", "notes")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = core.CreateYap(
-		"./journal.rizz",
-		"private-passphrase",
-		lobby.ID,
-		"welcome",
-		map[string]any{"message": "Hello, local storage"},
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_ = project
-}
+limit := 100
+page, err := db.QueryEvents(ctx, rizzbase.EventQueryOptions{
+	Kind: "user.signup",
+	Limit: &limit,
+})
 ```
 
-## Core API
-
-- `CreateProject`, `OpenProject`, and `ImportProject`
-- `CreateLobby`, `ListLobbies`, and `DeleteLobby`
-- `CreateYap`, `GetYap`, `ListYaps`, `UpdateYap`, and `DeleteYap`
-- `QueryYaps` and `QueryYapPage`
-- `InspectProjectBackup`
-- `AppendEvent` and `ListEvents`
-
-The Go SDK is the engine-native API and supports project format 1. Passphrases
-are passed to Go functions directly; do not place passphrases in source control
-or command-line arguments.
-
-## Queries
-
-```go
-limit := 10
-yaps, err := core.QueryYaps("./journal.rizz", "private-passphrase", lobby.ID,
-	core.QueryOptions{
-		Limit: &limit,
-		Where: []core.Filter{{
-			Field:    "message",
-			Operator: "==",
-			Value:    []byte(`"Hello, local storage"`),
-		}},
-	})
-```
-
-Go uses `json.RawMessage` for filter values and Yap data. Use cursor pagination
-with `QueryYapPage` and `QueryPage.NextCursor`.
-
-## Compatibility
-
-The official Go SDK follows the engine's major-version compatibility line:
-engine major versions below 2 remain in the V1 format. Project format migrations
-require an explicit compatibility decision and conformance coverage.
+Projects created by the engine also include a generated `projectId`. Older V1
+projects without that optional metadata remain readable.

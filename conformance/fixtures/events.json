@@ -1,0 +1,75 @@
+{
+  "name": "append-only events",
+  "steps": [
+    {
+      "id": "create",
+      "operation": "create",
+      "args": { "name": "events" },
+      "expect": { "fields": { "project.version": 1 } }
+    },
+    {
+      "id": "append-signup",
+      "operation": "event.append",
+      "args": {
+        "kind": "user.signup",
+        "source": "web",
+        "data": { "plan": "free" }
+      },
+      "expect": { "fields": { "event.kind": "user.signup", "event.source": "web", "event.data.plan": "free" } },
+      "capture": { "signupEventId": "event.id" }
+    },
+    {
+      "id": "append-deploy",
+      "operation": "event.append",
+      "args": {
+        "kind": "deploy.completed",
+        "source": "cli",
+        "data": { "duration": 184 }
+      },
+      "expect": { "fields": { "event.kind": "deploy.completed" } },
+      "capture": { "deployEventId": "event.id" }
+    },
+    {
+      "id": "append-second-signup",
+      "operation": "event.append",
+      "args": {
+        "kind": "user.signup",
+        "source": "web",
+        "data": { "plan": "pro" }
+      },
+      "expect": { "fields": { "event.data.plan": "pro" } },
+      "capture": { "secondSignupEventId": "event.id" }
+    },
+    {
+      "id": "list-in-append-order",
+      "operation": "event.list",
+      "expect": {
+        "fields": {
+          "events.length": 3,
+          "events.0.kind": "user.signup",
+          "events.1.kind": "deploy.completed",
+          "events.2.data.plan": "pro"
+        }
+      }
+    },
+    {
+      "id": "first-filtered-page",
+      "operation": "event.query",
+      "args": { "eventQuery": { "kind": "user.signup", "source": "web", "limit": 1 } },
+      "expect": { "fields": { "eventPage.events.length": 1, "eventPage.events.0.data.plan": "free" } },
+      "capture": { "eventCursor": "eventPage.nextCursor" }
+    },
+    {
+      "id": "second-filtered-page",
+      "operation": "event.query",
+      "args": { "eventQuery": { "kind": "user.signup", "source": "web", "limit": 1, "cursor": "${eventCursor}" } },
+      "expect": { "fields": { "eventPage.events.length": 1, "eventPage.events.0.data.plan": "pro", "eventPage.nextCursor": "" } }
+    },
+    {
+      "id": "reject-cursor-for-different-filter",
+      "operation": "event.query",
+      "args": { "eventQuery": { "kind": "deploy.completed", "source": "web", "limit": 1, "cursor": "${eventCursor}" } },
+      "expect": { "errorCode": "INVALID_ARGUMENT" }
+    }
+  ]
+}
