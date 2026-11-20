@@ -475,6 +475,11 @@ export default function Studio({ preview = false }: { preview?: boolean }) {
               Use a strong passphrase you can keep safe. There is no passphrase
               recovery.
             </small>
+            <small>
+              Questions? <a href="mailto:hello@rizzbase.tech">hello@rizzbase.tech</a>
+              {" · "}
+              <a href="mailto:paul@rizzbase.tech">paul@rizzbase.tech</a>
+            </small>
           </div>
         </section>
         {error && (
@@ -724,6 +729,10 @@ export default function Studio({ preview = false }: { preview?: boolean }) {
           >
             CLOSE PROJECT
           </button>
+          <div className="studio-contact">
+            <a href="mailto:hello@rizzbase.tech">hello@rizzbase.tech</a>
+            <a href="mailto:paul@rizzbase.tech">paul@rizzbase.tech</a>
+          </div>
         </footer>
       </aside>
 

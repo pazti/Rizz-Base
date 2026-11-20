@@ -29,6 +29,7 @@ export function Footer({ go }: { go: Go }) {
       <div>
         <button onClick={() => go("docs")}>Docs</button>
         <a href="/privacy/">Privacy</a>
+        <a href="mailto:hello@rizzbase.tech">Contact</a>
         <a href={repositoryUrl} target="_blank" rel="noreferrer">
           GitHub
         </a>
