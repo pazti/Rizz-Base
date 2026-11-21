@@ -1,4 +1,4 @@
-export type Page = "home" | "dashboard" | "lobby" | "editor" | "events" | "auth" | "pricing" | "docs" | "studio" | "packages"
+export type Page = "home" | "dashboard" | "lobby" | "editor" | "events" | "auth" | "pricing" | "docs" | "studio"
 export type Theme = "light" | "dark"
 
 export type Go = (p: Page) => void
