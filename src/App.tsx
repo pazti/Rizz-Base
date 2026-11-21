@@ -7,6 +7,7 @@ import Auth from "./pages/Auth"
 import Pricing from "./pages/Pricing"
 import DocsPage from "./pages/DocsPage"
 import Studio from "./Studio"
+import Packages from "./pages/Packages"
 
 export default function App() {
   if (import.meta.env.MODE === "studio") return <Studio />
@@ -24,6 +25,7 @@ export default function App() {
       "pricing",
       "docs",
       "studio",
+      "packages",
     ].includes(root)
       ? root
       : "home"
@@ -72,5 +74,6 @@ export default function App() {
   if (page === "docs")
     return <DocsPage theme={theme} toggle={toggle} go={go} slug={docSlug} />
   if (page === "studio") return <Studio preview />
+  if (page === "packages") return <Packages />
   return <Landing theme={theme} toggle={toggle} go={go} />
 }
